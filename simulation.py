@@ -4,6 +4,7 @@ import random
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
+from simulation_utils import (get_distance_and_duration, ev_generator)
 
 class Simulation:
     def __init__(self, jumlah_ev_motorbike, jumlah_battery_swap_station):
@@ -15,32 +16,7 @@ class Simulation:
 
     def setup_fleet_ev_motorbike(self):
         for i in range(self.jumlah_ev_motorbike):
-            max_speed = 60  # km/h
-            battery_capacity = 100
-            battery_now = 100
-            battery_cycle = random.randint(50, 800)  # siklus acak
-            lat = round(random.uniform(-5.6, -5.45), 6)
-            lon = round(random.uniform(105.2, 105.4), 6)
-
-            ev = EVMotorBike(
-                id=i,
-                max_speed_kmh=max_speed,
-                battery_capacity=battery_capacity,
-                battery_now=battery_now,
-                battery_cycle=battery_cycle,
-                current_lat=lat,
-                current_lon=lon
-            )
-
-            # Tambahkan order_schedule secara acak
-            if random.random() < 0.3:  # 30% kemungkinan punya order
-                order_lat = round(random.uniform(-5.6, -5.45), 6)
-                order_lon = round(random.uniform(105.2, 105.4), 6)
-                ev.order_schedule = {
-                    "latitude": order_lat,
-                    "longitude": order_lon
-                }
-                ev.status = "active order"
+            ev = ev_generator(i)
 
             self.fleet_ev_motorbikes[i] = ev
 
@@ -58,7 +34,15 @@ class Simulation:
             self.battery_swap_station[i] = station
 
     def add_new_ev_motorbike(self):
-        print('kalem')
+        if self.fleet_ev_motorbikes:
+            new_id = max(self.fleet_ev_motorbikes.keys()) + 1
+        else:
+            new_id = 0
+
+        ev = ev_generator(new_id)
+
+        self.fleet_ev_motorbikes[new_id] = ev
+        print(f"✅ EV baru ditambahkan dengan ID {new_id}")
 
     def remove_random_ev_motorbike(self):
         print('lah iya')
@@ -70,7 +54,12 @@ class Simulation:
         self.setup_fleet_ev_motorbike()
         self.setup_battery_swap_station()
         
-        print("\nDaftar EV Motorbikes:")
+
+        # self.env.process(self.simulate())
+        print('Simulasi sedang berjalan')
+
+        if random.random() < 0.3:  # 30% kemungkinan ev baru masuk ke sistem
+            self.add_new_ev_motorbike()
 
         for ev_id, ev in self.fleet_ev_motorbikes.items():
             print(f"\n🛵 EV ID: {ev.id}")
@@ -83,14 +72,15 @@ class Simulation:
             print(f"     Cycle Count  : {ev.battery.cycle}")
 
             if ev.order_schedule:
-                print(f"   📦 Order Schedule:")
-                print(f"     Tujuan Lat  : {ev.order_schedule['latitude']}")
-                print(f"     Tujuan Lon  : {ev.order_schedule['longitude']}")
+                print("   📦 Order Schedule:")
+                print(f"     Asal         : ({ev.order_schedule['order_origin_lat']}, {ev.order_schedule['order_origin_lon']})")
+                print(f"     Tujuan       : ({ev.order_schedule['order_destination_lat']}, {ev.order_schedule['order_destination_lon']})")
+                print(f"     Estimasi Jarak   : {ev.order_schedule['distance_estimation']} km")
+                print(f"     Estimasi Durasi  : {ev.order_schedule['duration_estimation']} menit")
+                print(f"     Estimasi Energi  : {ev.order_schedule['energy_estimaton']}%")
             else:
                 print("   📦 Order Schedule: Tidak ada")
 
-        # self.env.process(self.simulate())
-        print('Simulasi sedang berjalan')
 
 if __name__ == '__main__':    
     sim = Simulation(
