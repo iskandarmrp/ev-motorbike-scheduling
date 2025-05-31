@@ -1,10 +1,19 @@
 import simpy
 import osmnx as ox
 import random
+import time
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
 from simulation_utils import (get_distance_and_duration, ev_generator)
+
+# Status
+status_data = {
+    "jumlah_ev_motorbike": None,
+    "jumlah_battery_swap_station": None,
+    "fleet_ev_motorbikes": [],
+    "battery_swap_station": [],
+}
 
 class Simulation:
     def __init__(self, jumlah_ev_motorbike, jumlah_battery_swap_station):
@@ -42,13 +51,37 @@ class Simulation:
         ev = ev_generator(new_id)
 
         self.fleet_ev_motorbikes[new_id] = ev
-        print(f"✅ EV baru ditambahkan dengan ID {new_id}")
+        print(f"EV baru ditambahkan dengan ID {new_id}")
 
     def remove_random_ev_motorbike(self):
-        print('lah iya')
+        # Filter EV yang online dan idle
+        idle_online_evs = [
+            ev for ev in self.fleet_ev_motorbikes.values()
+            if ev.online_status == "online" and ev.status == "idle"
+        ]
+
+        if not idle_online_evs:
+            print("Tidak ada EV yang online dan idle untuk dinonaktifkan.")
+            return
+
+        # Pilih salah satu secara acak
+        ev_to_remove = random.choice(idle_online_evs)
+        ev_to_remove.online_status = "offline"
+
+        print(f"EV dengan ID {ev_to_remove.id} dinonaktifkan (offline).")
+
+    def monitor_status(self):
+        while True:
+            yield self.env.timeout(1)  # tunggu 1 waktu simulasi (1 detik)
+            print(f"\n[{self.env.now}] Status Update:")
+            for ev in self.fleet_ev_motorbikes.values():
+                print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
 
     def simulate(self):
-        print('simulate')
+        self.env.process(self.monitor_status())
+
+        for ev in self.fleet_ev_motorbikes.values():
+            self.env.process(ev.drive(self.env, self.battery_swap_station))
 
     def run(self):
         self.setup_fleet_ev_motorbike()
@@ -56,30 +89,25 @@ class Simulation:
         
 
         # self.env.process(self.simulate())
+        self.simulate()
         print('Simulasi sedang berjalan')
 
         if random.random() < 0.3:  # 30% kemungkinan ev baru masuk ke sistem
             self.add_new_ev_motorbike()
 
-        for ev_id, ev in self.fleet_ev_motorbikes.items():
-            print(f"\n🛵 EV ID: {ev.id}")
-            print(f"   Lokasi        : ({ev.current_lat}, {ev.current_lon})")
-            print(f"   Status        : {ev.status}")
-            print(f"   Online Status : {ev.online_status}")
-            print(f"   🔋 Baterai:")
-            print(f"     Capacity     : {ev.battery.capacity} kWh")
-            print(f"     Battery Now  : {ev.battery.battery_now} kWh")
-            print(f"     Cycle Count  : {ev.battery.cycle}")
+        # Jalankan step-by-step real-time
+        while self.env.now < 60:
+            if not self.env._queue:
+                break
 
-            if ev.order_schedule:
-                print("   📦 Order Schedule:")
-                print(f"     Asal         : ({ev.order_schedule['order_origin_lat']}, {ev.order_schedule['order_origin_lon']})")
-                print(f"     Tujuan       : ({ev.order_schedule['order_destination_lat']}, {ev.order_schedule['order_destination_lon']})")
-                print(f"     Estimasi Jarak   : {ev.order_schedule['distance_estimation']} km")
-                print(f"     Estimasi Durasi  : {ev.order_schedule['duration_estimation']} menit")
-                print(f"     Estimasi Energi  : {ev.order_schedule['energy_estimaton']}%")
-            else:
-                print("   📦 Order Schedule: Tidak ada")
+            now = self.env.now
+            next_time = self.env.peek()
+            delta = next_time - now
+
+            self.env.step()
+            time.sleep(delta)  # delay real time
+
+        print("\nSimulasi selesai.")
 
 
 if __name__ == '__main__':    

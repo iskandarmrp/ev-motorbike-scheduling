@@ -25,9 +25,6 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
         print(f"Gagal koneksi ke OSRM: {e}")
         return None, None
 
-def get_route(origin_lat, origin_lon, destination_lat, destination_lon):
-    print('tar')
-
 def ev_generator(ev_id):
     max_speed = 60  # km/h
     battery_capacity = 100
@@ -71,6 +68,6 @@ def ev_generator(ev_id):
                     "energy_estimaton": energy_order_estimaton + energy_to_order_estimaton
                 }
                         
-                ev.status = "active order"
+                ev.status = "heading to order"
     
     return ev
