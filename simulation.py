@@ -5,7 +5,14 @@ import time
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
-from simulation_utils import (get_distance_and_duration, ev_generator, update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_to_list)
+from simulation_utils import (
+    get_distance_and_duration,
+    ev_generator,
+    update_energy_distance_and_travel_time_all,
+    convert_fleet_ev_motorbikes_to_dict,
+    convert_station_to_list,
+    apply_schedule_to_ev_fleet
+)
 from algorithm.algorithm import simulated_annealing
 
 # Status
@@ -77,7 +84,7 @@ class Simulation:
             update_energy_distance_and_travel_time_all(self.fleet_ev_motorbikes, self.battery_swap_station)
             ev_dict = convert_fleet_ev_motorbikes_to_dict(self.fleet_ev_motorbikes)
             station_list = convert_station_to_list(self.battery_swap_station)
-            solution, score = simulated_annealing(
+            schedule, score = simulated_annealing(
                 station_list,
                 ev_dict,
                 threshold=15,
@@ -87,8 +94,9 @@ class Simulation:
                 T_min=0.001,
                 max_iter=200
             )
-            print("Solusi:", solution)
+            print("Schedule:", schedule)
             print("Score:", score)
+            apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
 
 
     def monitor_status(self):
@@ -138,3 +146,14 @@ if __name__ == '__main__':
         jumlah_battery_swap_station= 2
     )
     sim.run()
+
+
+# Todo:
+# - Update swap schedule sblm masuk algo (Kalau ga diupdate nanti schedulenya salah waktunya) -> Mungkin update setiap saat?
+#   Battery_now, energy_distance, travel_time saboy
+#   Exchange_battery gmn (Kayaknya gausah diganti)
+#   {'assigned': True, 'battery_now': 43.100861053005744, 'battery_station': 1, 'slot': 1, 'energy_distance': 28.77, 'travel_time': 41.79, 'waiting_time': 0, 'exchanged_battery': 14.330861053005744, 'received_battery': 100}
+# - Battery Swapnya
+# - Ngecas battery nya
+# - Front end
+# - Cycle (Update pas ngecas aja)

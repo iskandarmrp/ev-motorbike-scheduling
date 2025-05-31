@@ -144,3 +144,11 @@ def convert_station_to_list(battery_swap_station):
         battery_now_list = [battery.battery_now for battery in station.slots]
         station_list.append(battery_now_list)
     return station_list
+
+def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):
+    for ev_id, ev in fleet_ev_motorbikes.items():
+        if ev_id in solution:
+            if solution[ev_id].get("assigned"):
+                ev.swap_schedule = solution[ev_id]
+            else:
+                ev.swap_schedule = {}

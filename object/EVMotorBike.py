@@ -53,6 +53,10 @@ class EVMotorBike:
         while True:
             if self.online_status == 'online':
                 if self.status == 'idle':
+                    print('Swap Schedule:', self.swap_schedule)
+                    if self.swap_schedule:
+                        print('Masuk swap')
+                        self.status = 'heading to bss'
                     yield env.timeout(1)
                 elif self.status == 'heading to order':
                     distance, duration, route_polyline = get_route(self.current_lat, self.current_lon, self.order_schedule.get("order_origin_lat"), self.order_schedule.get("order_origin_lon"))
@@ -138,7 +142,7 @@ class EVMotorBike:
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
                 elif self.status == 'heading to bss':
-                    battery_station_id = self.order_schedule.get("battery_station")
+                    battery_station_id = self.swap_schedule.get("battery_station")
                     distance, duration, route_polyline = get_route(self.current_lat, self.current_lon, battery_swap_station.get(battery_station_id).lat, battery_swap_station.get(battery_station_id).lon)
 
                     route_length = len(route_polyline)
@@ -179,14 +183,13 @@ class EVMotorBike:
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
                 elif self.status == 'battery swap':
-                    self.battery_swap()
+                    self.battery_swap(env, battery_swap_station)
                     yield env.timeout(5)
             else:
                 yield env.timeout(1)
 
-        
 
-    def battery_swap(self, env):
+    def battery_swap(self, env, battery_swap_station):
         print('bntr ganti batere')
 
     def run(self, env):
