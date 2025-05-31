@@ -5,7 +5,8 @@ import time
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
-from simulation_utils import (get_distance_and_duration, ev_generator)
+from simulation_utils import (get_distance_and_duration, ev_generator, update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_to_list)
+from algorithm.algorithm import simulated_annealing
 
 # Status
 status_data = {
@@ -31,8 +32,8 @@ class Simulation:
 
     def setup_battery_swap_station(self):
         for i in range(self.jumlah_battery_swap_station):
-            lat = round(random.uniform(-5.6, -5.45), 6)
-            lon = round(random.uniform(105.2, 105.4), 6)
+            lat = round(random.uniform(-1.65, -1.55), 6)
+            lon = round(random.uniform(103.55, 103.65), 6)
             station = BatterySwapStation(
                 env=self.env,
                 id=i,
@@ -70,6 +71,26 @@ class Simulation:
 
         print(f"EV dengan ID {ev_to_remove.id} dinonaktifkan (offline).")
 
+    def scheduling(self):
+        while True:
+            yield self.env.timeout(10)
+            update_energy_distance_and_travel_time_all(self.fleet_ev_motorbikes, self.battery_swap_station)
+            ev_dict = convert_fleet_ev_motorbikes_to_dict(self.fleet_ev_motorbikes)
+            station_list = convert_station_to_list(self.battery_swap_station)
+            solution, score = simulated_annealing(
+                station_list,
+                ev_dict,
+                threshold=15,
+                charging_rate=100/240,
+                initial_temp=100.0,
+                alpha=0.95,
+                T_min=0.001,
+                max_iter=200
+            )
+            print("Solusi:", solution)
+            print("Score:", score)
+
+
     def monitor_status(self):
         while True:
             yield self.env.timeout(1)  # tunggu 1 waktu simulasi (1 detik)
@@ -79,6 +100,7 @@ class Simulation:
 
     def simulate(self):
         self.env.process(self.monitor_status())
+        self.env.process(self.scheduling())
 
         for ev in self.fleet_ev_motorbikes.values():
             self.env.process(ev.drive(self.env, self.battery_swap_station))

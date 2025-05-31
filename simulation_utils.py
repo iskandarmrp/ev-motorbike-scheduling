@@ -28,10 +28,11 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
 def ev_generator(ev_id):
     max_speed = 60  # km/h
     battery_capacity = 100
-    battery_now = 100
+    # battery_now = 100
+    battery_now = random.randint(10, 80)
     battery_cycle = random.randint(50, 800)  # siklus acak
-    lat = round(random.uniform(-5.6, -5.45), 6)
-    lon = round(random.uniform(105.2, 105.4), 6)
+    lat = round(random.uniform(-1.65, -1.55), 6)
+    lon = round(random.uniform(103.55, 103.65), 6)
 
     ev = EVMotorBike(
         id=ev_id,
@@ -71,3 +72,75 @@ def ev_generator(ev_id):
                 ev.status = "heading to order"
     
     return ev
+
+def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station):
+    for ev in fleet_ev_motorbikes.values():
+        ev.energy_distance = []
+        ev.travel_time = []
+
+        if not ev.swap_schedule:
+            if ev.status == 'idle':
+                for station in battery_swap_station.values():
+                    distance, duration = get_distance_and_duration(
+                        ev.current_lat, ev.current_lon,
+                        station.lat, station.lon
+                    )
+                    energy = round((distance * (100 / 60)), 2)
+                    ev.energy_distance.append(energy)
+                    ev.travel_time.append(duration)
+            elif ev.status == 'heading to order':
+                for station in battery_swap_station.values():
+                    distance_to_order, duration_to_order = get_distance_and_duration(
+                        ev.current_lat, ev.current_lon,
+                        ev.order_schedule.get("order_origin_lat"), ev.order_schedule.get("order_origin_lon")
+                    )
+                    energy_to_order = round((distance_to_order * (100 / 60)), 2)
+                    distance_order, duration_order = get_distance_and_duration(
+                        ev.order_schedule.get("order_origin_lat"), ev.order_schedule.get("order_origin_lon"),
+                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon")
+                    )
+                    energy_order = round((distance_order * (100 / 60)), 2)
+                    distance_to_bss, duration_to_bss = get_distance_and_duration(
+                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon"),
+                        station.lat, station.lon
+                    )
+                    energy_to_bss = round((distance_to_bss * (100 / 60)), 2)
+                    energy = energy_to_order + energy_order + energy_to_bss
+                    duration = duration_to_order + duration_order + duration_to_bss
+                    ev.energy_distance.append(energy)
+                    ev.travel_time.append(duration)
+            elif ev.status == 'on order':
+                for station in battery_swap_station.values():
+                    distance_order, duration_order = get_distance_and_duration(
+                        ev.current_lat, ev.current_lon,
+                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon")
+                    )
+                    energy_order = round((distance_order * (100 / 60)), 2)
+                    distance_to_bss, duration_to_bss = get_distance_and_duration(
+                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon"),
+                        station.lat, station.lon
+                    )
+                    energy_to_bss = round((distance_to_bss * (100 / 60)), 2)
+                    energy = energy_order + energy_to_bss
+                    duration = duration_order + duration_to_bss
+                    ev.energy_distance.append(energy)
+                    ev.travel_time.append(duration)
+
+def convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes):
+    ev_dict = {}
+    for ev_id, ev in fleet_ev_motorbikes.items():
+        ev_dict[ev_id] = {
+            "battery_now": ev.battery.battery_now,
+            "energy_distance": ev.energy_distance,
+            "travel_time": ev.travel_time,
+            "swap_schedule": ev.swap_schedule
+        }
+    return ev_dict
+
+def convert_station_to_list(battery_swap_station):
+    station_list = []
+    for station_id in sorted(battery_swap_station.keys()):
+        station = battery_swap_station[station_id]
+        battery_now_list = [battery.battery_now for battery in station.slots]
+        station_list.append(battery_now_list)
+    return station_list

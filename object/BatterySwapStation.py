@@ -22,3 +22,6 @@ class BatterySwapStation:
             cycle = random.randint(50, 800)  # siklus acak
             battery = Battery(capacity, battery_now, cycle)
             self.slots.append(battery)
+
+    def charge_batteries(self):
+        print('ngecas')
