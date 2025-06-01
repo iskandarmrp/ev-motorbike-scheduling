@@ -38,7 +38,7 @@ def simulated_annealing(
                 best_solution = new_solution
                 best_score = new_score
 
-        print(f"Iter {iteration+1}: Best Score = {round(best_score, 4)}")
+        # print(f"Iter {iteration+1}: Best Score = {round(best_score, 4)}")
         T *= alpha
 
     return best_solution, best_score

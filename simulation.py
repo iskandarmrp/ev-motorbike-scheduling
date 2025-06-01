@@ -5,6 +5,7 @@ import time
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
+from object.OrderSystem import OrderSystem
 from simulation_utils import (
     get_distance_and_duration,
     ev_generator,
@@ -30,10 +31,12 @@ class Simulation:
         self.jumlah_battery_swap_station = jumlah_battery_swap_station
         self.fleet_ev_motorbikes = {}
         self.battery_swap_station = {}
+        self.order_system = OrderSystem(self.env)
+        self.last_schedule_event = None
 
     def setup_fleet_ev_motorbike(self):
         for i in range(self.jumlah_ev_motorbike):
-            ev = ev_generator(i)
+            ev = ev_generator(i, self.battery_swap_station, self.order_system)
 
             self.fleet_ev_motorbikes[i] = ev
 
@@ -56,7 +59,7 @@ class Simulation:
         else:
             new_id = 0
 
-        ev = ev_generator(new_id)
+        ev = ev_generator(new_id, self.battery_swap_station, self.order_system)
 
         self.fleet_ev_motorbikes[new_id] = ev
         print(f"EV baru ditambahkan dengan ID {new_id}")
@@ -81,6 +84,11 @@ class Simulation:
     def scheduling(self):
         while True:
             yield self.env.timeout(10)
+            
+            # Buat event baru setiap kali scheduling dijalankan
+            self.last_schedule_event = self.env.event()
+            self.order_system.update_schedule_event(self.last_schedule_event)
+
             update_energy_distance_and_travel_time_all(self.fleet_ev_motorbikes, self.battery_swap_station)
             ev_dict = convert_fleet_ev_motorbikes_to_dict(self.fleet_ev_motorbikes)
             station_list = convert_station_to_list(self.battery_swap_station)
@@ -98,6 +106,9 @@ class Simulation:
             print("Score:", score)
             apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
 
+            # Selesaikan event agar search_driver bisa lanjut
+            self.last_schedule_event.succeed()
+
 
     def monitor_status(self):
         while True:
@@ -105,6 +116,28 @@ class Simulation:
             print(f"\n[{self.env.now}] Status Update:")
             for ev in self.fleet_ev_motorbikes.values():
                 print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
+            # Print status OrderSystem
+            print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
+            for order in self.order_system.order_search_driver:
+                print(f"🔄 Order {order.id} - Status: {order.status}, "
+                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+                
+            print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
+            for order in self.order_system.order_active:
+                print(f"🔄 Order {order.id} - Status: {order.status}, "
+                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+
+            print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
+            for order in self.order_system.order_done:
+                print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+
+            print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
+            for order in self.order_system.order_failed:
+                print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
 
     def simulate(self):
         self.env.process(self.monitor_status())
@@ -112,14 +145,17 @@ class Simulation:
 
         # SOKIN: Kalau ada ev baru masuk gimana?
         for ev in self.fleet_ev_motorbikes.values():
-            self.env.process(ev.drive(self.env, self.battery_swap_station))
+            self.env.process(ev.drive(self.env, self.battery_swap_station, self.order_system))
 
         for battery_swap_station in self.battery_swap_station.values():
             self.env.process(battery_swap_station.charge_batteries(self.env))
 
+        self.env.process(self.order_system.generate_order(self.env))
+        self.env.process(self.order_system.search_driver(self.env, self.fleet_ev_motorbikes, self.battery_swap_station))
+
     def run(self):
-        self.setup_fleet_ev_motorbike()
         self.setup_battery_swap_station()
+        self.setup_fleet_ev_motorbike()
         
 
         # self.env.process(self.simulate())
@@ -146,14 +182,12 @@ class Simulation:
 
 if __name__ == '__main__':    
     sim = Simulation(
-        jumlah_ev_motorbike= 5,
-        jumlah_battery_swap_station= 2
+        jumlah_ev_motorbike= 100,
+        jumlah_battery_swap_station= 10
     )
     sim.run()
 
-
 # Todo:
-# - Order System
 # - Front end
 # - Cycle (Dihitung di algo gasi)
 

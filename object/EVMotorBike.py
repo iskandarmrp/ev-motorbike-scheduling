@@ -49,7 +49,7 @@ class EVMotorBike:
         #             "energy_estimaton": energy_order_estimaton + energy_to_order_estimaton
         #         }
 
-    def drive(self, env, battery_swap_station):
+    def drive(self, env, battery_swap_station, order_system):
         while True:
             if self.online_status == 'online':
                 if self.status == 'idle':
@@ -148,6 +148,16 @@ class EVMotorBike:
                                 self.status = 'heading to bss'
                             else:
                                 self.status = 'idle'
+
+                            order_id = self.order_schedule.get("order_id")
+                            for order in order_system.order_active:
+                                if order.id == order_id:
+                                    order.status = "done"
+                                    order_system.order_active.remove(order)
+                                    order_system.order_done.append(order)
+                                    print(f"[{env.now:.2f}m] ✅ Order {order_id} selesai oleh EV {self.id}")
+                                    break
+                            self.order_schedule = {}
                         else:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = lat_now

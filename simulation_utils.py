@@ -2,6 +2,7 @@ import requests
 import random
 import polyline
 from object.EVMotorBike import EVMotorBike
+from object.Order import Order
 
 OSRM_URL = "http://localhost:5000"
 
@@ -25,11 +26,11 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
         print(f"Gagal koneksi ke OSRM: {e}")
         return None, None
 
-def ev_generator(ev_id):
+def ev_generator(ev_id, battery_swap_station, order_system):
     max_speed = 60  # km/h
     battery_capacity = 100
     # battery_now = 100
-    battery_now = random.randint(10, 80)
+    battery_now = random.randint(20, 100)
     battery_cycle = random.randint(50, 800)  # siklus acak
     lat = round(random.uniform(-6.4, -6.1), 6)
     lon = round(random.uniform(106.7, 107.0), 6)
@@ -51,6 +52,17 @@ def ev_generator(ev_id):
         order_destination_lat = round(order_origin_lat + random.uniform(-0.05, 0.05), 6) # ~ 5 km
         order_destination_lon = round(order_origin_lon + random.uniform(-0.05, 0.05), 6)
 
+        nearest_energy_distance_to_bss = float('inf')
+
+        for station in battery_swap_station.values():
+            distance, duration = get_distance_and_duration(
+                order_destination_lat, order_destination_lon,
+                station.lat, station.lon
+            )
+            energy_needed = round((distance * (100 / 60)), 2)
+            if energy_needed < nearest_energy_distance_to_bss:
+                nearest_energy_distance_to_bss = energy_needed
+
         order_distance_estimation, order_duration_estimation = get_distance_and_duration(order_origin_lat, order_origin_lon, order_destination_lat, order_destination_lon)
         distance_to_order_estimation, duration_to_order_estimation = get_distance_and_duration(lat, lon, order_origin_lat, order_origin_lon)
                 
@@ -58,8 +70,18 @@ def ev_generator(ev_id):
             energy_order_estimaton = round((order_distance_estimation * (100 / 60)), 2)
             energy_to_order_estimaton = round((distance_to_order_estimation * (100 / 60)), 2)
 
-            if energy_order_estimaton + energy_to_order_estimaton < battery_now:
+            if energy_order_estimaton + energy_to_order_estimaton + nearest_energy_distance_to_bss < battery_now:
+                order = Order(order_system.total_order + 1)
+                order.status = 'on going'
+                order.order_origin_lat = order_destination_lat
+                order.order_origin_lon = order_origin_lon
+                order.order_destination_lat = order_destination_lat
+                order.order_destination_lon = order_destination_lon
+                order_system.order_active.append(order)
+                order_system.total_order += 1
+
                 ev.order_schedule = {
+                    "order_id": order.id,
                     "order_origin_lat": order_origin_lat,
                     "order_origin_lon": order_origin_lon,
                     "order_destination_lat": order_destination_lat,
