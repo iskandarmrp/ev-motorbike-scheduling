@@ -150,10 +150,13 @@ if __name__ == '__main__':
 
 # Todo:
 # - Update swap schedule sblm masuk algo (Kalau ga diupdate nanti schedulenya salah waktunya) -> Mungkin update setiap saat?
-#   Battery_now, energy_distance, travel_time saboy
-#   Exchange_battery gmn (Kayaknya gausah diganti)
-#   {'assigned': True, 'battery_now': 43.100861053005744, 'battery_station': 1, 'slot': 1, 'energy_distance': 28.77, 'travel_time': 41.79, 'waiting_time': 0, 'exchanged_battery': 14.330861053005744, 'received_battery': 100}
-# - Battery Swapnya
 # - Ngecas battery nya
+# - Pulau jawa duls gasi
+# - Order System
 # - Front end
 # - Cycle (Update pas ngecas aja)
+
+# Masalah:
+# Hitung-hitungan baterai kayaknya salah (ada baterai minus) (karena pembulatan kayaknya)
+# Harusnya pas bikin order juga cek nearest battery_swap_station < 15 (pake yg udh ada di update energy distance aja)
+# Ada yang heading to order tapi gajalan

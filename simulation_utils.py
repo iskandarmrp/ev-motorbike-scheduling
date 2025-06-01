@@ -58,7 +58,7 @@ def ev_generator(ev_id):
             energy_order_estimaton = round((order_distance_estimation * (100 / 60)), 2)
             energy_to_order_estimaton = round((distance_to_order_estimation * (100 / 60)), 2)
 
-            if energy_order_estimaton + energy_to_order_estimaton < 100:
+            if energy_order_estimaton + energy_to_order_estimaton < battery_now:
                 ev.order_schedule = {
                     "order_origin_lat": order_origin_lat,
                     "order_origin_lon": order_origin_lon,

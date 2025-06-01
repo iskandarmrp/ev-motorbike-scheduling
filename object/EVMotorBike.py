@@ -59,6 +59,7 @@ class EVMotorBike:
                         self.status = 'heading to bss'
                     yield env.timeout(1)
                 elif self.status == 'heading to order':
+                    print('lagi jalan')
                     distance, duration, route_polyline = get_route(self.current_lat, self.current_lon, self.order_schedule.get("order_origin_lat"), self.order_schedule.get("order_origin_lon"))
 
                     route_length = len(route_polyline)
@@ -90,6 +91,11 @@ class EVMotorBike:
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(last_minutes)
 
+                            if self.swap_schedule:
+                                self.swap_schedule["battery_now"] = self.battery.battery_now
+                                self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - (energy_per_minute * last_minutes))
+                                self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - last_minutes)
+
                             self.status = 'on order'
                         else:
                             lat_now, lon_now = route_polyline[index_int]
@@ -98,6 +104,11 @@ class EVMotorBike:
                             self.battery.battery_now -= energy_per_minute
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
+
+                            if self.swap_schedule:
+                                self.swap_schedule["battery_now"] = self.battery.battery_now
+                                self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
+                                self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'on order':
                     distance, duration, route_polyline = get_route(self.current_lat, self.current_lon, self.order_schedule.get("order_destination_lat"), self.order_schedule.get("order_destination_lon"))
 
@@ -131,6 +142,9 @@ class EVMotorBike:
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
+                                self.swap_schedule["battery_now"] = self.battery.battery_now
+                                self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - (energy_per_minute * last_minutes))
+                                self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - last_minutes)
                                 self.status = 'heading to bss'
                             else:
                                 self.status = 'idle'
@@ -141,6 +155,11 @@ class EVMotorBike:
                             self.battery.battery_now -= energy_per_minute
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
+
+                            if self.swap_schedule:
+                                self.swap_schedule["battery_now"] = self.battery.battery_now
+                                self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
+                                self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'heading to bss':
                     battery_station_id = self.swap_schedule.get("battery_station")
                     distance, duration, route_polyline = get_route(self.current_lat, self.current_lon, battery_swap_station.get(battery_station_id).lat, battery_swap_station.get(battery_station_id).lon)
@@ -174,6 +193,11 @@ class EVMotorBike:
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(last_minutes)
 
+                            if self.swap_schedule:
+                                self.swap_schedule["battery_now"] = self.battery.battery_now
+                                self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - (energy_per_minute * last_minutes))
+                                self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - last_minutes)
+
                             self.status = 'battery swap'
                         else:
                             lat_now, lon_now = route_polyline[index_int]
@@ -182,27 +206,46 @@ class EVMotorBike:
                             self.battery.battery_now -= energy_per_minute
                             print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
+
+                            if self.swap_schedule:
+                                self.swap_schedule["battery_now"] = self.battery.battery_now
+                                self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
+                                self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'battery swap':
+                    yield env.timeout(max(0, self.swap_schedule.get("waiting_time", 0)))
+
+                    battery_station_id = self.swap_schedule["battery_station"]
+                    slot_index = self.swap_schedule["slot"]
+                    station = battery_swap_station.get(battery_station_id)
+
+                    while station.slots[slot_index].battery_now < 80:
+                        yield env.timeout(1)
+
                     self.battery_swap(env, battery_swap_station)
-                    yield env.timeout(5)
             else:
                 yield env.timeout(1)
 
 
     def battery_swap(self, env, battery_swap_station):
         print('bntr ganti batere')
+        station_id = self.swap_schedule["battery_station"]
+        slot_index = self.swap_schedule["slot"]
 
-    def run(self, env):
-        while True:
-            if env.now % 10 == 0:
-                print(f"[{env.now}] EV {self.id} menunggu penjadwalan...")
-                yield schedule_event  # tunggu sampai penjadwalan selesai
-                schedule_event = env.event()  # reset event baru
+        station = battery_swap_station.get(station_id)
+        slot_battery = station.slots[slot_index]
+        ev_battery = self.battery
 
-            if env.now in self.order_schedule:
-                yield env.process(self.drive(env))
+        print(f"[{env.now}] 🔄 EV {self.id} swapping battery at Station {station.name} Slot {slot_index}")
+        print(f"  🔋 EV battery before swap: {ev_battery.battery_now}% (cycle: {ev_battery.cycle})")
+        print(f"  🔋 Station battery before swap: {slot_battery.battery_now}% (cycle: {slot_battery.cycle})")
 
-            if env.now in self.swap_schedule:
-                yield env.process(self.battery_swap(env))
+        # Tukar baterainya
+        station.slots[slot_index] = ev_battery
+        self.battery = slot_battery
 
-            yield env.timeout(1)
+        print(f"  ✅ EV battery after swap: {self.battery.battery_now}% (cycle: {self.battery.cycle})")
+        print(f"  ✅ Station battery after swap: {station.slots[slot_index].battery_now}% (cycle: {station.slots[slot_index].cycle})")
+
+        self.status = 'idle'
+        self.swap_schedule = {}
+        print("Masuk ke status idle")

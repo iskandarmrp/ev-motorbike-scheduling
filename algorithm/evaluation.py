@@ -13,6 +13,9 @@ def evaluate(battery_swap_schedule):
             active_fleet_batery_score += (sched["received_battery"] ** 2)
         elif sched:
             active_fleet_batery_score += sched["battery_now"]
-    total_score = (battery_urgency_score + active_fleet_batery_score) / ((total_travel_time + (10 * total_waiting_time))/60)
+    if total_travel_time or total_waiting_time:
+        total_score = (battery_urgency_score + active_fleet_batery_score) / ((total_travel_time + (10 * total_waiting_time))/60)
+    else:
+        total_score = battery_urgency_score + active_fleet_batery_score
 
     return total_score
