@@ -110,8 +110,12 @@ class Simulation:
         self.env.process(self.monitor_status())
         self.env.process(self.scheduling())
 
+        # SOKIN: Kalau ada ev baru masuk gimana?
         for ev in self.fleet_ev_motorbikes.values():
             self.env.process(ev.drive(self.env, self.battery_swap_station))
+
+        for battery_swap_station in self.battery_swap_station.values():
+            self.env.process(battery_swap_station.charge_batteries(self.env))
 
     def run(self):
         self.setup_fleet_ev_motorbike()
