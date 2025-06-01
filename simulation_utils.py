@@ -31,8 +31,8 @@ def ev_generator(ev_id):
     # battery_now = 100
     battery_now = random.randint(10, 80)
     battery_cycle = random.randint(50, 800)  # siklus acak
-    lat = round(random.uniform(-1.65, -1.55), 6)
-    lon = round(random.uniform(103.55, 103.65), 6)
+    lat = round(random.uniform(-6.4, -6.1), 6)
+    lon = round(random.uniform(106.7, 107.0), 6)
 
     ev = EVMotorBike(
         id=ev_id,

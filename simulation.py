@@ -39,8 +39,8 @@ class Simulation:
 
     def setup_battery_swap_station(self):
         for i in range(self.jumlah_battery_swap_station):
-            lat = round(random.uniform(-1.65, -1.55), 6)
-            lon = round(random.uniform(103.55, 103.65), 6)
+            lat = round(random.uniform(-6.4, -6.1), 6)
+            lon = round(random.uniform(106.7, 107.0), 6)
             station = BatterySwapStation(
                 env=self.env,
                 id=i,
@@ -153,12 +153,9 @@ if __name__ == '__main__':
 
 
 # Todo:
-# - Update swap schedule sblm masuk algo (Kalau ga diupdate nanti schedulenya salah waktunya) -> Mungkin update setiap saat?
-# - Ngecas battery nya
-# - Pulau jawa duls gasi
 # - Order System
 # - Front end
-# - Cycle (Update pas ngecas aja)
+# - Cycle (Dihitung di algo gasi)
 
 # Masalah:
 # Hitung-hitungan baterai kayaknya salah (ada baterai minus) (karena pembulatan kayaknya)
