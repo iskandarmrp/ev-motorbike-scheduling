@@ -3,4 +3,5 @@ class Battery:
         self.id = None
         self.capacity = capacity
         self.battery_now = battery_now
+        self.battery_total_charged = 100 * cycle
         self.cycle = cycle
