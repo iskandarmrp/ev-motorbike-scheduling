@@ -26,7 +26,7 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
         print(f"Gagal koneksi ke OSRM: {e}")
         return None, None
 
-def ev_generator(ev_id, battery_swap_station, order_system):
+def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, battery_counter):
     max_speed = 60  # km/h
     battery_capacity = 100
     # battery_now = 100
@@ -42,7 +42,9 @@ def ev_generator(ev_id, battery_swap_station, order_system):
         battery_now=battery_now,
         battery_cycle=battery_cycle,
         current_lat=lat,
-        current_lon=lon
+        current_lon=lon,
+        battery_registry=battery_registry,
+        battery_counter=battery_counter
     )
 
     # Tambahkan order_schedule secara acak

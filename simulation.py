@@ -33,10 +33,12 @@ class Simulation:
         self.battery_swap_station = {}
         self.order_system = OrderSystem(self.env)
         self.last_schedule_event = None
+        self.battery_registry = {}
+        self.battery_counter = [0]
 
     def setup_fleet_ev_motorbike(self):
         for i in range(self.jumlah_ev_motorbike):
-            ev = ev_generator(i, self.battery_swap_station, self.order_system)
+            ev = ev_generator(i, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter)
 
             self.fleet_ev_motorbikes[i] = ev
 
@@ -49,7 +51,9 @@ class Simulation:
                 id=i,
                 name=f"Station_{i}",
                 lat=lat,
-                lon=lon
+                lon=lon,
+                battery_registry=self.battery_registry,
+                battery_counter=self.battery_counter
             )
             self.battery_swap_station[i] = station
 
@@ -59,7 +63,7 @@ class Simulation:
         else:
             new_id = 0
 
-        ev = ev_generator(new_id, self.battery_swap_station, self.order_system)
+        ev = ev_generator(new_id, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter)
 
         self.fleet_ev_motorbikes[new_id] = ev
         print(f"EV baru ditambahkan dengan ID {new_id}")
@@ -113,31 +117,37 @@ class Simulation:
     def monitor_status(self):
         while True:
             yield self.env.timeout(1)  # tunggu 1 waktu simulasi (1 detik)
-            print(f"\n[{self.env.now}] Status Update:")
-            for ev in self.fleet_ev_motorbikes.values():
-                print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
-            # Print status OrderSystem
-            print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
-            for order in self.order_system.order_search_driver:
-                print(f"🔄 Order {order.id} - Status: {order.status}, "
-                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n[{self.env.now}] Status Update:")
+            # for ev in self.fleet_ev_motorbikes.values():
+            #     print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
+            # # Print status OrderSystem
+            # print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
+            # for order in self.order_system.order_search_driver:
+            #     print(f"🔄 Order {order.id} - Status: {order.status}, "
+            #         f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
-            print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
-            for order in self.order_system.order_active:
-                print(f"🔄 Order {order.id} - Status: {order.status}, "
-                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
+            # for order in self.order_system.order_active:
+            #     print(f"🔄 Order {order.id} - Status: {order.status}, "
+            #         f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
 
-            print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
-            for order in self.order_system.order_done:
-                print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
+            # for order in self.order_system.order_done:
+            #     print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
 
-            print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
-            for order in self.order_system.order_failed:
-                print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
+            # for order in self.order_system.order_failed:
+            #     print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+                
+            print("\n🔋 Battery Registry:")
+            for id, battery in self.battery_registry.items():
+                print(f"Battery ID {id}: {battery.battery_now:.2f}% | Cycle: {battery.cycle}")
+            print(self.battery_registry)
+            print(self.battery_counter[0])
 
     def simulate(self):
         self.env.process(self.monitor_status())

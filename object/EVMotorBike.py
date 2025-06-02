@@ -1,4 +1,5 @@
 import random
+import copy
 import requests
 import polyline
 from .Battery import Battery
@@ -26,7 +27,7 @@ def get_route(origin_lat, origin_lon, destination_lat, destination_lon):
         print(f"⚠️ Error saat memproses polyline: {e}")
 
 class EVMotorBike:
-    def __init__(self, id, max_speed_kmh, battery_capacity, battery_now, battery_cycle, current_lat, current_lon):
+    def __init__(self, id, max_speed_kmh, battery_capacity, battery_now, battery_cycle, current_lat, current_lon, battery_registry, battery_counter):
         self.id = id
         self.max_speed = max_speed_kmh
         self.battery = Battery(battery_capacity, battery_now, battery_cycle)
@@ -39,15 +40,9 @@ class EVMotorBike:
         self.order_schedule = {}
         self.swap_schedule = {}
 
-        # ev.order_schedule = {
-        #             "order_origin_lat": order_origin_lat,
-        #             "order_origin_lon": order_origin_lon,
-        #             "order_destination_lat": order_destination_lat,
-        #             "order_destination_lon": order_destination_lon,
-        #             "distance_estimation": order_distance_estimation + distance_to_order_estimation,
-        #             "duration_estimation": order_duration_estimation + duration_to_order_estimation,
-        #             "energy_estimaton": energy_order_estimaton + energy_to_order_estimaton
-        #         }
+        self.battery.id = copy.deepcopy(battery_counter[0])
+        battery_registry[battery_counter[0]] = self.battery
+        battery_counter[0] += 1
 
     def drive(self, env, battery_swap_station, order_system):
         while True:
