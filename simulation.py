@@ -143,11 +143,11 @@ class Simulation:
             #     print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
             #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
-            print("\n🔋 Battery Registry:")
-            for id, battery in self.battery_registry.items():
-                print(f"Battery ID {id}: {battery.battery_now:.2f}% | Cycle: {battery.cycle}")
-            print(self.battery_registry)
-            print(self.battery_counter[0])
+            # print("\n🔋 Battery Registry:")
+            # for id, battery in self.battery_registry.items():
+            #     print(f"Battery ID {id}: {battery.battery_now:.2f}% | Cycle: {battery.cycle}")
+            # print(self.battery_registry)
+            # print(self.battery_counter[0])
 
     def simulate(self):
         self.env.process(self.monitor_status())

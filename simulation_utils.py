@@ -155,6 +155,7 @@ def convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes):
     for ev_id, ev in fleet_ev_motorbikes.items():
         ev_dict[ev_id] = {
             "battery_now": ev.battery.battery_now,
+            "battery_cycle": ev.battery.cycle,
             "energy_distance": ev.energy_distance,
             "travel_time": ev.travel_time,
             "swap_schedule": ev.swap_schedule
@@ -165,8 +166,8 @@ def convert_station_to_list(battery_swap_station):
     station_list = []
     for station_id in sorted(battery_swap_station.keys()):
         station = battery_swap_station[station_id]
-        battery_now_list = [battery.battery_now for battery in station.slots]
-        station_list.append(battery_now_list)
+        battery_list = [[battery.battery_now, battery.cycle] for battery in station.slots]
+        station_list.append(battery_list)
     return station_list
 
 def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):

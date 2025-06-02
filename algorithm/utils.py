@@ -17,11 +17,12 @@ def queue_update(solution, ev, battery_swap_station, charging_rate, required_bat
             key = (sched['battery_station'], sched['slot'])
             ready_time = sched['travel_time'] + sched['waiting_time']
             exchanged_battery = sched['exchanged_battery']
+            exchanged_battery_cycle = sched['battery_cycle']
 
             if key not in temp_queue:
-                temp_queue[key] = [(ready_time, exchanged_battery)]
+                temp_queue[key] = [(ready_time, exchanged_battery, exchanged_battery_cycle)]
             else:
-                temp_queue[key].append((ready_time, exchanged_battery))
+                temp_queue[key].append((ready_time, exchanged_battery, exchanged_battery_cycle))
 
     # Urutkan setiap antrian berdasarkan arrival_time
     slot_timeline = {
@@ -46,9 +47,10 @@ def queue_update(solution, ev, battery_swap_station, charging_rate, required_bat
 
         if key not in slot_timeline:
             last_ready_time = 0
-            last_insert = battery_swap_station[station_idx][slot_idx]
+            last_insert = battery_swap_station[station_idx][slot_idx][0]
+            last_insert_cycle = battery_swap_station[station_idx][slot_idx][1]
         else:
-            last_ready_time, last_insert = slot_timeline[key][-1]
+            last_ready_time, last_insert, last_insert_cycle = slot_timeline[key][-1]
 
         arrival_time = sched['travel_time']
         time_to_80 = max(0, (required_battery_threshold - last_insert) / charging_rate)
@@ -57,16 +59,19 @@ def queue_update(solution, ev, battery_swap_station, charging_rate, required_bat
 
         exchanged_battery = sched['exchanged_battery']
         received_battery = min(100, last_insert + (arrival_time + waiting_time - last_ready_time) * charging_rate)
+        exchanged_battery_cycle = sched['battery_cycle']
+        received_battery_cycle = last_insert_cycle + (received_battery - last_insert) / 100
 
         # Update ke dalam solution
         solution[ev_id]['waiting_time'] = round(waiting_time, 2)
         solution[ev_id]['received_battery'] = round(received_battery, 2)
+        solution[ev_id]['received_battery_cycle'] = round(received_battery_cycle, 2)
 
         # Tambahkan ke slot_timeline untuk update antrian selanjutnya
         if key not in slot_timeline:
-            slot_timeline[key] = [(arrival_time + waiting_time, exchanged_battery)]
+            slot_timeline[key] = [(arrival_time + waiting_time, exchanged_battery, exchanged_battery_cycle)]
         else:
-            slot_timeline[key].append((arrival_time + waiting_time, exchanged_battery))
+            slot_timeline[key].append((arrival_time + waiting_time, exchanged_battery, exchanged_battery_cycle))
 
     return solution
 
@@ -99,13 +104,15 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
         neighbor[ev_id] = {
             'assigned': False,
             'battery_now': data['battery_now'],
+            'battery_cycle': data['battery_cycle'],
             'battery_station': None,
             'slot': None,
             'energy_distance': None,
             'travel_time': None,
             'waiting_time': None,
             'exchanged_battery': None,
-            'received_battery': None
+            'received_battery': None,
+            'received_battery_cycle': None
         }
     else:
         # Acak salah satu pilihan valid
@@ -114,13 +121,15 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
         neighbor[ev_id] = {
             'assigned': True,
             'battery_now': data['battery_now'],
+            'battery_cycle': data['battery_cycle'],
             'battery_station': station_idx,
             'slot': slot_idx,
             'energy_distance': energy_dist,
             'travel_time': travel_time,
             'waiting_time': 0,  # akan diupdate
             'exchanged_battery': exchanged_battery,
-            'received_battery': 0  # akan diupdate
+            'received_battery': 0,  # akan diupdate
+            'received_battery_cycle': 0 # akan diupdate
         }
 
     # Update ulang nilai waiting_time dan received_battery setelah perubahan

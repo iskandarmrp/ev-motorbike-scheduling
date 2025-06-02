@@ -48,13 +48,13 @@ class EVMotorBike:
         while True:
             if self.online_status == 'online':
                 if self.status == 'idle':
-                    print('Swap Schedule:', self.swap_schedule)
+                    # print('Swap Schedule:', self.swap_schedule)
                     if self.swap_schedule:
-                        print('Masuk swap')
+                        # print('Masuk swap')
                         self.status = 'heading to bss'
                     yield env.timeout(1)
                 elif self.status == 'heading to order':
-                    print('lagi jalan')
+                    # print('lagi jalan')
                     distance, duration, route_polyline = get_route(self.current_lat, self.current_lon, self.order_schedule.get("order_origin_lat"), self.order_schedule.get("order_origin_lon"))
 
                     route_length = len(route_polyline)
@@ -83,7 +83,7 @@ class EVMotorBike:
                             self.current_lat = self.order_schedule.get("order_origin_lat")
                             self.current_lon = self.order_schedule.get("order_origin_lon")
                             self.battery.battery_now -= energy_per_minute * last_minutes
-                            print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
+                            # print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
@@ -97,7 +97,7 @@ class EVMotorBike:
                             self.current_lat = lat_now
                             self.current_lon = lon_now
                             self.battery.battery_now -= energy_per_minute
-                            print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
+                            # print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
 
                             if self.swap_schedule:
@@ -133,7 +133,7 @@ class EVMotorBike:
                             self.current_lat = self.order_schedule.get("order_destination_lat")
                             self.current_lon = self.order_schedule.get("order_destination_lon")
                             self.battery.battery_now -= energy_per_minute * last_minutes
-                            print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
+                            # print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
@@ -150,7 +150,7 @@ class EVMotorBike:
                                     order.status = "done"
                                     order_system.order_active.remove(order)
                                     order_system.order_done.append(order)
-                                    print(f"[{env.now:.2f}m] ✅ Order {order_id} selesai oleh EV {self.id}")
+                                    # print(f"[{env.now:.2f}m] ✅ Order {order_id} selesai oleh EV {self.id}")
                                     break
                             self.order_schedule = {}
                         else:
@@ -158,7 +158,7 @@ class EVMotorBike:
                             self.current_lat = lat_now
                             self.current_lon = lon_now
                             self.battery.battery_now -= energy_per_minute
-                            print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
+                            # print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
 
                             if self.swap_schedule:
@@ -195,7 +195,7 @@ class EVMotorBike:
                             self.current_lat = battery_swap_station.get(battery_station_id).lat
                             self.current_lon = battery_swap_station.get(battery_station_id).lon
                             self.battery.battery_now -= energy_per_minute * last_minutes
-                            print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
+                            # print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
@@ -209,7 +209,7 @@ class EVMotorBike:
                             self.current_lat = lat_now
                             self.current_lon = lon_now
                             self.battery.battery_now -= energy_per_minute
-                            print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
+                            # print(f"[{env.now:.2f}m] Posisi {self.id}: ({self.current_lat:.5f}, {self.current_lon:.5f}) Baterai: {self.battery.battery_now}")
                             yield env.timeout(1)
 
                             if self.swap_schedule:
@@ -232,7 +232,7 @@ class EVMotorBike:
 
 
     def battery_swap(self, env, battery_swap_station):
-        print('bntr ganti batere')
+        # print('bntr ganti batere')
         station_id = self.swap_schedule["battery_station"]
         slot_index = self.swap_schedule["slot"]
 
@@ -240,17 +240,17 @@ class EVMotorBike:
         slot_battery = station.slots[slot_index]
         ev_battery = self.battery
 
-        print(f"[{env.now}] 🔄 EV {self.id} swapping battery at Station {station.name} Slot {slot_index}")
-        print(f"  🔋 EV battery before swap: {ev_battery.battery_now}% (cycle: {ev_battery.cycle})")
-        print(f"  🔋 Station battery before swap: {slot_battery.battery_now}% (cycle: {slot_battery.cycle})")
+        # print(f"[{env.now}] 🔄 EV {self.id} swapping battery at Station {station.name} Slot {slot_index}")
+        # print(f"  🔋 EV battery before swap: {ev_battery.battery_now}% (cycle: {ev_battery.cycle})")
+        # print(f"  🔋 Station battery before swap: {slot_battery.battery_now}% (cycle: {slot_battery.cycle})")
 
         # Tukar baterainya
         station.slots[slot_index] = ev_battery
         self.battery = slot_battery
 
-        print(f"  ✅ EV battery after swap: {self.battery.battery_now}% (cycle: {self.battery.cycle})")
-        print(f"  ✅ Station battery after swap: {station.slots[slot_index].battery_now}% (cycle: {station.slots[slot_index].cycle})")
+        # print(f"  ✅ EV battery after swap: {self.battery.battery_now}% (cycle: {self.battery.cycle})")
+        # print(f"  ✅ Station battery after swap: {station.slots[slot_index].battery_now}% (cycle: {station.slots[slot_index].cycle})")
 
         self.status = 'idle'
         self.swap_schedule = {}
-        print("Masuk ke status idle")
+        # print("Masuk ke status idle")

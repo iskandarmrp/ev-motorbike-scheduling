@@ -41,13 +41,15 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
             solution[i] = {
                 'assigned': False,
                 'battery_now': data['battery_now'],
+                'battery_cycle': data['battery_cycle'],
                 'battery_station': None,
                 'slot': None,
                 'energy_distance': None,
                 'travel_time': None,
                 'waiting_time': None,
                 'exchanged_battery': None,
-                'received_battery': None
+                'received_battery': None,
+                'received_battery_cycle': None
             }
             continue
 
@@ -59,13 +61,15 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         solution[i] = {
             'assigned': True,
             'battery_now': data['battery_now'],
+            'battery_cycle': data['battery_cycle'],
             'battery_station': station_idx,
             'slot': slot_idx,
             'energy_distance': energy_dist,
             'travel_time': travel_time,
             'waiting_time': 0,  # akan diupdate
             'exchanged_battery': exchanged_battery,
-            'received_battery': 0  # akan diupdate
+            'received_battery': 0,  # akan diupdate
+            'received_battery_cycle': 0 # akan diupdate
         }
 
     # Update ulang waiting_time dan received_battery
