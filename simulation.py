@@ -22,6 +22,13 @@ status_data = {
     "jumlah_battery_swap_station": None,
     "fleet_ev_motorbikes": [],
     "battery_swap_station": [],
+    "batteries": [],
+    "total_order": None,
+    "order_search_driver": [],
+    "order_active": [],
+    "order_done": [],
+    "order_failed": [],
+    "time_now": None,
 }
 
 class Simulation:
@@ -185,6 +192,95 @@ class Simulation:
             delta = next_time - now
 
             self.env.step()
+
+            status_data["jumlah_ev_motorbike"] = self.jumlah_ev_motorbike
+            status_data["jumlah_battery_swap_station"] = self.jumlah_battery_swap_station
+            status_data["fleet_ev_motorbikes"] = [
+                {
+                    "id": motorbike.id,
+                    "max_speed": motorbike.max_speed,
+                    "battery_id": motorbike.battery.id,
+                    "latitude": motorbike.current_lat,
+                    "longitude": motorbike.current_lon,
+                    "status": motorbike.status,
+                    "online_status": motorbike.online_status,
+                    "order_id": motorbike.order_schedule.get("order_id") if motorbike.order_schedule else None,
+                    "swap_schedule": motorbike.swap_schedule,
+                }
+                for motorbike in self.fleet_ev_motorbikes.values()
+            ]
+            status_data["battery_swap_station"] = [
+                {
+                    "id": battery_swap_station.id,
+                    "name": battery_swap_station.name,
+                    "total_slots": battery_swap_station.total_slots,
+                    "latitude": battery_swap_station.lat,
+                    "longitude": battery_swap_station.lon,
+                    "slots": [battery.id for battery in battery_swap_station.slots],
+                }
+                for battery_swap_station in self.battery_swap_station.values()
+            ]
+            status_data["batteries"] = [
+                {
+                    "id": battery.id,
+                    "capacity": battery.capacity,
+                    "battery_now": battery.battery_now,
+                    "battery_total_charged": battery.battery_total_charged,
+                    "cycle": battery.cycle,
+                }
+                for battery in self.battery_registry.values()
+            ]
+            status_data["total_order"] = self.order_system.total_order
+            status_data["order_search_driver"] = [
+                {
+                    "id": order.id,
+                    "status": order.status,
+                    "searching_time": order.searching_time,
+                    "order_origin_lat": order.order_origin_lat,
+                    "order_origin_lon": order.order_origin_lon,
+                    "order_destination_lat": order.order_destination_lat,
+                    "order_destination_lon": order.order_destination_lon,
+                }
+                for i, order in enumerate(self.order_system.order_search_driver)
+            ]
+            status_data["order_active"] = [
+                {
+                    "id": order.id,
+                    "status": order.status,
+                    "searching_time": order.searching_time,
+                    "order_origin_lat": order.order_origin_lat,
+                    "order_origin_lon": order.order_origin_lon,
+                    "order_destination_lat": order.order_destination_lat,
+                    "order_destination_lon": order.order_destination_lon,
+                }
+                for i, order in enumerate(self.order_system.order_active)
+            ]
+            status_data["order_done"] = [
+                {
+                    "id": order.id,
+                    "status": order.status,
+                    "searching_time": order.searching_time,
+                    "order_origin_lat": order.order_origin_lat,
+                    "order_origin_lon": order.order_origin_lon,
+                    "order_destination_lat": order.order_destination_lat,
+                    "order_destination_lon": order.order_destination_lon,
+                }
+                for i, order in enumerate(self.order_system.order_done)
+            ]
+            status_data["order_failed"] = [
+                {
+                    "id": order.id,
+                    "status": order.status,
+                    "searching_time": order.searching_time,
+                    "order_origin_lat": order.order_origin_lat,
+                    "order_origin_lon": order.order_origin_lon,
+                    "order_destination_lat": order.order_destination_lat,
+                    "order_destination_lon": order.order_destination_lon,
+                }
+                for i, order in enumerate(self.order_system.order_failed)
+            ]
+            status_data["time_now"] = self.env.now
+
             time.sleep(delta)  # delay real time
 
         print("\nSimulasi selesai.")
@@ -199,7 +295,6 @@ if __name__ == '__main__':
 
 # Todo:
 # - Front end
-# - Cycle (Dihitung di algo gasi)
 
 # Masalah:
 # Hitung-hitungan baterai kayaknya salah (ada baterai minus) (karena pembulatan kayaknya)
