@@ -51,7 +51,7 @@ class Simulation:
 
     def setup_battery_swap_station(self):
         for i in range(self.jumlah_battery_swap_station):
-            lat = round(random.uniform(-6.4, -6.1), 6)
+            lat = round(random.uniform(-6.4, -6.125), 6)
             lon = round(random.uniform(106.7, 107.0), 6)
             station = BatterySwapStation(
                 env=self.env,
