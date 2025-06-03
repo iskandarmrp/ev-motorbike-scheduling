@@ -183,7 +183,7 @@ class Simulation:
             self.add_new_ev_motorbike()
 
         # Jalankan step-by-step real-time
-        while self.env.now < 60:
+        while self.env.now < 2400:
             if not self.env._queue:
                 break
 

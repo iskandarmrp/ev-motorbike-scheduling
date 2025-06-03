@@ -17,18 +17,18 @@ import { OrderTable } from "./order-table";
 import { SwapScheduleTable } from "./swap-schedule-table";
 import { FleetActivityLog } from "./fleet-activity-log";
 import { ConnectionStatus } from "./connection-status";
-import { DEMO_MODE, DEBUG_MODE } from "@/lib/config";
-import { fetchBatteryStatus, type BatterySwapStatus } from "@/lib/battery-api";
+import { DEMO_MODE, DEBUG_MODE, BATTERY_WEBSOCKET_URL } from "@/lib/config";
+import { type BatterySwapStatus } from "@/lib/battery-api";
 import { Battery, Zap, Truck, CheckCircle, AlertTriangle } from "lucide-react";
 
 export interface MotorbikeState {
   id: string;
   current_lat: number;
   current_lon: number;
-  status: "idle" | "on_order" | "heading_to_station" | "charging" | "offline";
+  status: string;
   battery_now: number;
   battery_max: number;
-  online_status: "online" | "offline";
+  online_status: string;
   assigned_order_id?: string;
   assigned_station_id?: string;
 }
@@ -45,7 +45,7 @@ export interface BatteryStation {
 
 export interface OrderSchedule {
   id: string;
-  status: "pending" | "active" | "completed" | "failed";
+  status: string;
   assigned_motorbike_id?: string;
   order_origin_lat: number;
   order_origin_lon: number;
@@ -61,7 +61,7 @@ export interface SwapSchedule {
   station_id: string;
   priority: number;
   scheduled_time: number;
-  status: "scheduled" | "in_progress" | "completed";
+  status: string;
 }
 
 // Mock data for fallback
@@ -151,397 +151,158 @@ export function DashboardBatterySwap() {
 
   // Transform API data to component format - FIXED VERSION
   const transformApiData = (data: BatterySwapStatus) => {
-    if (!data) return;
+    const batteryMap = new Map(safeArray(data.batteries).map((b) => [b.id, b]));
+    const motorbikeMap: Record<string, MotorbikeState> = {};
+    const stationMap: Record<string, BatteryStation> = {};
+    const orders: OrderSchedule[] = [];
+    const swaps: SwapSchedule[] = [];
 
-    try {
-      let hasRealData = false;
+    safeArray(data.fleet_ev_motorbikes).forEach((m, i) => {
+      const battery = batteryMap.get(m.battery_id);
+      const id = safeString(m.id, `MB${i}`);
+      motorbikeMap[id] = {
+        id,
+        current_lat: safeNumber(m.latitude),
+        current_lon: safeNumber(m.longitude),
+        status: safeString(m.status),
+        battery_now: safeNumber(battery?.battery_now),
+        battery_max: safeNumber(battery?.capacity),
+        online_status: safeString(m.online_status),
+        assigned_order_id: m.order_id ?? undefined,
+        assigned_station_id: m.swap_schedule?.station_id ?? undefined,
+      };
+    });
 
-      if (DEBUG_MODE) {
-        console.log("Starting data transformation with:", data);
-      }
+    safeArray(data.battery_swap_station).forEach((s, i) => {
+      const id = safeString(s.id, `BS${i}`);
+      stationMap[id] = {
+        id,
+        name: safeString(s.name),
+        lat: safeNumber(s.latitude),
+        lon: safeNumber(s.longitude),
+        available_batteries: safeArray(s.slots).length,
+        charging_batteries: 0,
+        total_capacity: safeNumber(s.total_slots),
+      };
+    });
 
-      // Transform motorbike data
-      const transformedMotorbikes: Record<string, MotorbikeState> = {};
-      const motorbikeArray = safeArray(data.fleet_ev_motorbikes);
+    [
+      ...safeArray(data.order_search_driver),
+      ...safeArray(data.order_active),
+      ...safeArray(data.order_done),
+      ...safeArray(data.order_failed),
+    ].forEach((o, i) => {
+      orders.push({
+        id: safeString(o.id, `ORD${i}`),
+        status: safeString(o.status),
+        assigned_motorbike_id: o.assigned_motorbike_id ?? undefined,
+        order_origin_lat: safeNumber(o.order_origin_lat),
+        order_origin_lon: safeNumber(o.order_origin_lon),
+        order_destination_lat: safeNumber(o.order_destination_lat),
+        order_destination_lon: safeNumber(o.order_destination_lon),
+        created_at: safeString(o.created_at, new Date().toISOString()),
+        completed_at: o.completed_at ?? undefined,
+      });
+    });
 
-      if (motorbikeArray.length > 0) {
-        motorbikeArray.forEach((motorbike, index) => {
-          if (motorbike && typeof motorbike === "object") {
-            console.log("Ini motorbike id", motorbike.id);
-            console.log("Ini motorbike latitude", motorbike.latitude);
-            const id = safeString(
-              motorbike.id,
-              `MB${String(index + 1).padStart(3, "0")}`
-            );
-
-            // Use actual API values, not defaults
-            const transformedMotorbike: MotorbikeState = {
-              id,
-              current_lat: safeNumber(
-                motorbike.latitude,
-                -6.2088 + (Math.random() - 0.5) * 0.02
-              ),
-              current_lon: safeNumber(
-                motorbike.longitude,
-                106.8456 + (Math.random() - 0.5) * 0.02
-              ),
-              status: safeString(motorbike.status, "idle") as any,
-              battery_now: safeNumber(
-                motorbike.battery_now,
-                Math.floor(Math.random() * 100)
-              ),
-              battery_max: safeNumber(motorbike.battery_max, 100),
-              online_status: safeString(
-                motorbike.online_status,
-                "online"
-              ) as any,
-              assigned_order_id: motorbike.assigned_order_id
-                ? safeString(motorbike.assigned_order_id)
-                : undefined,
-              assigned_station_id: motorbike.assigned_station_id
-                ? safeString(motorbike.assigned_station_id)
-                : undefined,
-            };
-
-            transformedMotorbikes[id] = transformedMotorbike;
-            hasRealData = true;
-
-            if (DEBUG_MODE) {
-              console.log(`Transformed motorbike ${id}:`, {
-                original: motorbike,
-                transformed: transformedMotorbike,
-              });
-            }
-          }
+    safeArray(data.batteries).forEach((b, i) => {
+      if (b.motorbike_id && b.station_id) {
+        swaps.push({
+          id: safeString(b.id, `SWAP${i}`),
+          motorbike_id: safeString(b.motorbike_id),
+          station_id: safeString(b.station_id),
+          priority: safeNumber(b.priority, 1),
+          scheduled_time: safeNumber(b.scheduled_time, 0),
+          status: safeString(b.status, "scheduled"),
         });
       }
+    });
 
-      // Transform battery station data
-      const transformedStations: Record<string, BatteryStation> = {};
-      const stationArray = safeArray(data.battery_swap_station);
-
-      if (stationArray.length > 0) {
-        stationArray.forEach((station, index) => {
-          if (station && typeof station === "object") {
-            const id = safeString(
-              station.id,
-              `BS${String(index + 1).padStart(3, "0")}`
-            );
-            console.log("Ini id:", station.id);
-            console.log("Ini latitude:", station.lat);
-
-            const transformedStation: BatteryStation = {
-              id,
-              name: safeString(station.name, `Battery Station ${id}`),
-              lat: safeNumber(
-                station.latitude,
-                -6.2088 + (Math.random() - 0.5) * 0.02
-              ),
-              lon: safeNumber(
-                station.longitude,
-                106.8456 + (Math.random() - 0.5) * 0.02
-              ),
-              available_batteries: safeNumber(
-                station.available_batteries,
-                Math.floor(Math.random() * 10)
-              ),
-              charging_batteries: safeNumber(
-                station.charging_batteries,
-                Math.floor(Math.random() * 5)
-              ),
-              total_capacity: safeNumber(station.total_capacity, 15),
-            };
-
-            transformedStations[id] = transformedStation;
-            hasRealData = true;
-
-            if (DEBUG_MODE) {
-              console.log(`Transformed station ${id}:`, {
-                original: station,
-                transformed: transformedStation,
-              });
-            }
-          }
-        });
-      }
-
-      // Transform order data
-      const transformedOrders: OrderSchedule[] = [];
-      const allOrders = [
-        ...safeArray(data.order_search_driver),
-        ...safeArray(data.order_active),
-        ...safeArray(data.order_done),
-        ...safeArray(data.order_failed),
-      ];
-
-      if (allOrders.length > 0) {
-        allOrders.forEach((order, index) => {
-          if (order && typeof order === "object") {
-            const transformedOrder: OrderSchedule = {
-              id: safeString(
-                order.id,
-                `ORD${String(index + 1).padStart(3, "0")}`
-              ),
-              status: safeString(order.status, "pending") as any,
-              assigned_motorbike_id: order.assigned_motorbike_id
-                ? safeString(order.assigned_motorbike_id)
-                : undefined,
-              order_origin_lat: safeNumber(
-                order.order_origin_lat,
-                -6.2088 + (Math.random() - 0.5) * 0.02
-              ),
-              order_origin_lon: safeNumber(
-                order.order_origin_lon,
-                106.8456 + (Math.random() - 0.5) * 0.02
-              ),
-              order_destination_lat: safeNumber(
-                order.order_destination_lat,
-                -6.22 + (Math.random() - 0.5) * 0.02
-              ),
-              order_destination_lon: safeNumber(
-                order.order_destination_lon,
-                106.83 + (Math.random() - 0.5) * 0.02
-              ),
-              created_at: safeString(
-                order.created_at,
-                new Date().toISOString()
-              ),
-              completed_at: order.completed_at
-                ? safeString(order.completed_at)
-                : undefined,
-            };
-
-            transformedOrders.push(transformedOrder);
-            hasRealData = true;
-
-            if (DEBUG_MODE) {
-              console.log(`Transformed order ${transformedOrder.id}:`, {
-                original: order,
-                transformed: transformedOrder,
-              });
-            }
-          }
-        });
-      }
-
-      // Transform swap schedule data
-      const transformedSwaps: SwapSchedule[] = [];
-      const batteryArray = safeArray(data.batteries);
-
-      if (batteryArray.length > 0) {
-        batteryArray.forEach((battery, index) => {
-          if (battery && typeof battery === "object") {
-            const transformedSwap: SwapSchedule = {
-              id: safeString(
-                battery.id,
-                `SWAP${String(index + 1).padStart(3, "0")}`
-              ),
-              motorbike_id: safeString(
-                battery.motorbike_id,
-                `MB${String(index + 1).padStart(3, "0")}`
-              ),
-              station_id: safeString(
-                battery.station_id,
-                `BS${String((index % 8) + 1).padStart(3, "0")}`
-              ),
-              priority: safeNumber(
-                battery.priority,
-                Math.floor(Math.random() * 10) + 1
-              ),
-              scheduled_time: safeNumber(
-                battery.scheduled_time,
-                Math.floor(Math.random() * 30) + 5
-              ),
-              status: safeString(battery.status, "scheduled") as any,
-            };
-
-            transformedSwaps.push(transformedSwap);
-            hasRealData = true;
-
-            if (DEBUG_MODE) {
-              console.log(`Transformed swap ${transformedSwap.id}:`, {
-                original: battery,
-                transformed: transformedSwap,
-              });
-            }
-          }
-        });
-      }
-
-      // Update state with real data or keep mock data
-      if (hasRealData) {
-        setDataSource("api");
-
-        // Always use transformed data if we have any
-        if (Object.keys(transformedMotorbikes).length > 0) {
-          setMotorbikeStates(transformedMotorbikes);
-          if (DEBUG_MODE) {
-            console.log(
-              "Updated motorbike states with API data:",
-              transformedMotorbikes
-            );
-          }
-        }
-
-        if (Object.keys(transformedStations).length > 0) {
-          setBatteryStations(transformedStations);
-          if (DEBUG_MODE) {
-            console.log(
-              "Updated battery stations with API data:",
-              transformedStations
-            );
-          }
-        }
-
-        if (transformedOrders.length > 0) {
-          setOrderSchedules(transformedOrders);
-          if (DEBUG_MODE) {
-            console.log(
-              "Updated order schedules with API data:",
-              transformedOrders
-            );
-          }
-        }
-
-        if (transformedSwaps.length > 0) {
-          setSwapSchedules(transformedSwaps);
-          if (DEBUG_MODE) {
-            console.log(
-              "Updated swap schedules with API data:",
-              transformedSwaps
-            );
-          }
-        }
-
-        // Generate activity logs
-        const newLogs = [
-          `[${new Date().toLocaleTimeString()}] API data received: ${
-            Object.keys(transformedMotorbikes).length
-          } motorbikes, ${Object.keys(transformedStations).length} stations, ${
-            transformedOrders.length
-          } orders`,
-        ];
-        setActivityLogs((prev) => [...newLogs, ...prev].slice(0, 50));
-      } else {
-        setDataSource("mock");
-        const newLogs = [
-          `[${new Date().toLocaleTimeString()}] API returned empty data, using mock data`,
-        ];
-        setActivityLogs((prev) => [...newLogs, ...prev].slice(0, 50));
-      }
-
-      if (DEBUG_MODE) {
-        console.log("Data transformation completed:", {
-          hasRealData,
-          dataSource: hasRealData ? "api" : "mock",
-          motorbikeCount: Object.keys(transformedMotorbikes).length,
-          stationCount: Object.keys(transformedStations).length,
-          orderCount: transformedOrders.length,
-          swapCount: transformedSwaps.length,
-        });
-      }
-    } catch (err) {
-      console.error("Error transforming API data:", err);
-      setDataSource("mock");
-    }
-  };
-
-  const fetchStatusData = async () => {
-    try {
-      setError(null);
-
-      if (DEMO_MODE) {
-        // Mock data for demo mode
-        const mockStatus: BatterySwapStatus = {
-          jumlah_ev_motorbike: 100,
-          jumlah_battery_swap_station: 10,
-          fleet_ev_motorbikes: [],
-          battery_swap_station: [],
-          batteries: [],
-          total_order: 45,
-          order_search_driver: [],
-          order_active: [],
-          order_done: [],
-          order_failed: [],
-          time_now: new Date().toISOString(),
-        };
-        setStatus(mockStatus);
-        setLastUpdated(new Date());
-        setLoading(false);
-        return;
-      }
-
-      // Fetch real data from API
-      const data = await fetchBatteryStatus();
-      setStatus(data);
-      setLastUpdated(new Date());
-
-      // Transform API data to component format
-      transformApiData(data);
-
-      if (DEBUG_MODE) {
-        console.log("Received battery status:", data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch status:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setDataSource("mock");
-    } finally {
-      setLoading(false);
-    }
+    setMotorbikeStates(motorbikeMap);
+    setBatteryStations(stationMap);
+    setOrderSchedules(orders);
+    setSwapSchedules(swaps);
+    setActivityLogs((prev) =>
+      [
+        `[${new Date().toLocaleTimeString()}] WebSocket update received: ${
+          Object.keys(motorbikeMap).length
+        } motorbikes`,
+        ...prev,
+      ].slice(0, 50)
+    );
   };
 
   useEffect(() => {
-    fetchStatusData();
+    if (DEMO_MODE || !BATTERY_WEBSOCKET_URL) return;
 
-    // Poll for updates every 5 seconds when not in demo mode
-    const interval = setInterval(fetchStatusData, DEMO_MODE ? 10000 : 5000);
+    const socket = new WebSocket(BATTERY_WEBSOCKET_URL);
 
-    return () => clearInterval(interval);
+    socket.onopen = () => {
+      setError(null);
+      console.log("✅ WebSocket connected");
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setStatus(data);
+        transformApiData(data);
+        setLastUpdated(new Date());
+        setDataSource("api");
+        setLoading(false);
+      } catch (err) {
+        console.error("WebSocket data error:", err);
+      }
+    };
+
+    socket.onerror = (err) => {
+      console.error("WebSocket error:", err);
+      setError("WebSocket error");
+      setDataSource("mock");
+    };
+
+    socket.onclose = () => {
+      setError("Disconnected");
+      console.warn("WebSocket closed");
+    };
+
+    return () => socket.close();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-lg">Loading Battery Swap Dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading)
+    return <div className="text-center p-12">Loading dashboard...</div>;
 
-  if (error) {
-    return (
-      <div className="container mx-auto p-6">
-        <ConnectionStatus />
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h2 className="text-lg font-semibold text-red-800">
-            API Connection Error
-          </h2>
-          <p className="text-red-600">
-            Failed to fetch data from battery swap backend: {error}
-          </p>
-          <div className="mt-2 space-x-2">
-            <button
-              onClick={fetchStatusData}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Retry Connection
-            </button>
-            <button
-              onClick={() =>
-                window.open("http://localhost:8000/docs", "_blank")
-              }
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              View API Docs
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div className="container mx-auto p-6">
+  //       <ConnectionStatus />
+  //       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+  //         <h2 className="text-lg font-semibold text-red-800">
+  //           API Connection Error
+  //         </h2>
+  //         <p className="text-red-600">
+  //           Failed to fetch data from battery swap backend: {error}
+  //         </p>
+  //         <div className="mt-2 space-x-2">
+  //           <button
+  //             onClick={fetchStatusData}
+  //             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+  //           >
+  //             Retry Connection
+  //           </button>
+  //           <button
+  //             onClick={() =>
+  //               window.open("http://localhost:8000/docs", "_blank")
+  //             }
+  //             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+  //           >
+  //             View API Docs
+  //           </button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -568,7 +329,7 @@ export function DashboardBatterySwap() {
         </div>
       </div>
 
-      <ConnectionStatus />
+      {/* <ConnectionStatus /> */}
 
       {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

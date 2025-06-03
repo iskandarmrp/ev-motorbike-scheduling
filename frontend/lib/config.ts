@@ -23,8 +23,8 @@ export const BATTERY_API_BASE_URL = isPreview
   : "http://localhost:8000"
 
 export const BATTERY_WEBSOCKET_URL = isPreview
-  ? null // Disable WebSocket in preview
-  : "http://localhost:8000"
+  ? null
+  : "ws://localhost:8000/ws/status";
 
 // Map configuration
 export const DEFAULT_MAP_CENTER = [-6.2088, 106.8456] // Jakarta area
