@@ -26,11 +26,13 @@ export interface MotorbikeState {
   current_lat: number;
   current_lon: number;
   status: string;
+  battery_id: number;
   battery_now: number;
   battery_max: number;
+  battery_cycle: number;
   online_status: string;
   assigned_order_id?: string;
-  assigned_station_id?: string;
+  assigned_swap_schedule?: SwapSchedule;
 }
 
 export interface BatteryStation {
@@ -56,12 +58,18 @@ export interface OrderSchedule {
 }
 
 export interface SwapSchedule {
-  id: string;
-  motorbike_id: string;
-  station_id: string;
-  priority: number;
-  scheduled_time: number;
-  status: string;
+  motorbike_id: number;
+  assigned: boolean;
+  battery_now: number;
+  battery_cycle: number;
+  battery_station: string | number;
+  slot: number;
+  energy_distance: number;
+  travel_time: number;
+  waiting_time: number;
+  exchanged_battery: string | number;
+  received_battery: number;
+  received_battery_cycle: number;
 }
 
 // Mock data for fallback
@@ -71,8 +79,10 @@ const mockMotorbikeStates: Record<string, MotorbikeState> = {
     current_lat: -6.2088,
     current_lon: 106.8456,
     status: "idle",
+    battery_id: 999,
     battery_now: 80,
     battery_max: 100,
+    battery_cycle: 20,
     online_status: "online",
   },
 };
@@ -104,12 +114,18 @@ const mockOrderSchedules: OrderSchedule[] = [
 
 const mockSwapSchedules: SwapSchedule[] = [
   {
-    id: "SWAP001",
-    motorbike_id: "MB003",
-    station_id: "BS001",
-    priority: 8,
-    scheduled_time: 15,
-    status: "scheduled",
+    motorbike_id: 1,
+    assigned: true,
+    battery_now: 80,
+    battery_cycle: 120,
+    battery_station: 1,
+    slot: 1,
+    energy_distance: 125,
+    travel_time: 150,
+    waiting_time: 130,
+    exchanged_battery: 12,
+    received_battery: 100,
+    received_battery_cycle: 20,
   },
 ];
 
@@ -165,12 +181,35 @@ export function DashboardBatterySwap() {
         current_lat: safeNumber(m.latitude),
         current_lon: safeNumber(m.longitude),
         status: safeString(m.status),
+        battery_id: safeNumber(m.battery_id),
         battery_now: safeNumber(battery?.battery_now),
         battery_max: safeNumber(battery?.capacity),
+        battery_cycle: safeNumber(battery?.cycle),
         online_status: safeString(m.online_status),
         assigned_order_id: m.order_id ?? undefined,
-        assigned_station_id: m.swap_schedule?.station_id ?? undefined,
+        assigned_swap_schedule:
+          m.swap_schedule && Object.keys(m.swap_schedule).length > 0
+            ? m.swap_schedule
+            : undefined,
       };
+      if (m.swap_schedule) {
+        swaps.push({
+          motorbike_id: m.id,
+          assigned: Boolean(m.swap_schedule.assigned),
+          battery_now: safeNumber(m.swap_schedule.battery_now),
+          battery_cycle: safeNumber(m.swap_schedule.battery_cycle),
+          battery_station: m.swap_schedule.battery_station,
+          slot: safeNumber(m.swap_schedule.slot),
+          energy_distance: safeNumber(m.swap_schedule.energy_distance),
+          travel_time: safeNumber(m.swap_schedule.travel_time),
+          waiting_time: safeNumber(m.swap_schedule.waiting_time),
+          exchanged_battery: m.swap_schedule.exchanged_battery,
+          received_battery: safeNumber(m.swap_schedule.received_battery),
+          received_battery_cycle: safeNumber(
+            m.swap_schedule.received_battery_cycle
+          ),
+        });
+      }
     });
 
     safeArray(data.battery_swap_station).forEach((s, i) => {
@@ -205,18 +244,18 @@ export function DashboardBatterySwap() {
       });
     });
 
-    safeArray(data.batteries).forEach((b, i) => {
-      if (b.motorbike_id && b.station_id) {
-        swaps.push({
-          id: safeString(b.id, `SWAP${i}`),
-          motorbike_id: safeString(b.motorbike_id),
-          station_id: safeString(b.station_id),
-          priority: safeNumber(b.priority, 1),
-          scheduled_time: safeNumber(b.scheduled_time, 0),
-          status: safeString(b.status, "scheduled"),
-        });
-      }
-    });
+    // safeArray(data.batteries).forEach((b, i) => {
+    //   if (b.motorbike_id && b.station_id) {
+    //     swaps.push({
+    //       id: safeString(b.id, `SWAP${i}`),
+    //       motorbike_id: safeString(b.motorbike_id),
+    //       station_id: safeString(b.station_id),
+    //       priority: safeNumber(b.priority, 1),
+    //       scheduled_time: safeNumber(b.scheduled_time, 0),
+    //       status: safeString(b.status, "scheduled"),
+    //     });
+    //   }
+    // });
 
     setMotorbikeStates(motorbikeMap);
     setBatteryStations(stationMap);
@@ -395,7 +434,7 @@ export function DashboardBatterySwap() {
       </div>
 
       {/* API Data Debug Info (only in development) */}
-      {DEBUG_MODE && status && (
+      {/* {DEBUG_MODE && status && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -424,7 +463,7 @@ export function DashboardBatterySwap() {
             </pre>
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">

@@ -125,30 +125,30 @@ class Simulation:
         while True:
             yield self.env.timeout(1)  # tunggu 1 waktu simulasi (1 detik)
             # print(f"\n[{self.env.now}] Status Update:")
-            # for ev in self.fleet_ev_motorbikes.values():
-            #     print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
-            # # Print status OrderSystem
-            # print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
-            # for order in self.order_system.order_search_driver:
-            #     print(f"🔄 Order {order.id} - Status: {order.status}, "
-            #         f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            for ev in self.fleet_ev_motorbikes.values():
+                print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
+            # Print status OrderSystem
+            print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
+            for order in self.order_system.order_search_driver:
+                print(f"🔄 Order {order.id} - Status: {order.status}, "
+                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
-            # print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
-            # for order in self.order_system.order_active:
-            #     print(f"🔄 Order {order.id} - Status: {order.status}, "
-            #         f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
+            for order in self.order_system.order_active:
+                print(f"🔄 Order {order.id} - Status: {order.status}, "
+                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
 
-            # print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
-            # for order in self.order_system.order_done:
-            #     print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
+            for order in self.order_system.order_done:
+                print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
 
-            # print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
-            # for order in self.order_system.order_failed:
-            #     print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
+            for order in self.order_system.order_failed:
+                print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
             # print("\n🔋 Battery Registry:")
             # for id, battery in self.battery_registry.items():
