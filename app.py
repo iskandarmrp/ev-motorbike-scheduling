@@ -31,6 +31,7 @@ def startup_event():
 # Endpoint untuk mendapatkan data status EV secara real-time
 @app.get("/status")
 def get_status():
+    print('11111')
     return {
         "jumlah_ev_motorbike": status_data.get("jumlah_ev_motorbike"),
         "jumlah_battery_swap_station": status_data.get("jumlah_battery_swap_station"),

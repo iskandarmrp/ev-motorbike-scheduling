@@ -25,6 +25,32 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define types for our data
+export interface MotorbikeState {
+  status: string;
+  online_status: string;
+  max_speed: number;
+  latitude: number;
+  longitude: number;
+  battery_id: number;
+  battery: number;
+}
+
+export interface BatterySwapStationState {
+  name: string;
+  total_slots: number;
+  latitude: number;
+  longitude: number;
+  slots: (number | null)[];
+}
+
+export interface Battery {
+  capacity: number;
+  battery: number;
+  cycle: number;
+}
+
+export interface SwapSchedule {}
+
 export interface TaxiState {
   taxi_state: string;
   latitude: number;
@@ -214,8 +240,8 @@ export function DashboardFleetMotorbike() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-blue-600 text-white p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">BlueBird</h1>
+      <header className="bg-green-600 text-white p-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Ojek Online Listrik</h1>
         <div className="flex items-center gap-4">
           {DEMO_MODE && (
             <span className="text-xs bg-yellow-500 text-white px-2 py-1 rounded">
