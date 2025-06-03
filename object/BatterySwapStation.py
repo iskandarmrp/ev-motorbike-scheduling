@@ -23,6 +23,8 @@ class BatterySwapStation:
             cycle = random.randint(50, 800)  # siklus acak
             battery = Battery(capacity, battery_now, cycle)
             battery.id = copy.deepcopy(battery_counter[0])
+            battery.location = 'station'
+            battery.location_id = copy.deepcopy(self.id)
             battery_registry[battery_counter[0]] = battery
             battery_counter[0] += 1
             self.slots.append(battery)

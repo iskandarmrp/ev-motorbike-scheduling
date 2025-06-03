@@ -167,7 +167,7 @@ export function MotorbikeTable({ motorbikeStates = {} }: MotorbikeTableProps) {
                     <TableCell>
                       <Badge
                         variant={
-                          onlineStatus === "online" ? "default" : "destructive"
+                          onlineStatus === "online" ? "green" : "destructive"
                         }
                       >
                         {onlineStatus}

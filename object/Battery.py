@@ -5,3 +5,5 @@ class Battery:
         self.battery_now = battery_now
         self.battery_total_charged = 100 * cycle
         self.cycle = cycle
+        self.location = None
+        self.location_id = None

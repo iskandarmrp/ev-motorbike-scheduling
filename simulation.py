@@ -124,7 +124,7 @@ class Simulation:
     def monitor_status(self):
         while True:
             yield self.env.timeout(1)  # tunggu 1 waktu simulasi (1 detik)
-            # print(f"\n[{self.env.now}] Status Update:")
+            print(f"\n[{self.env.now}] Status Update:")
             for ev in self.fleet_ev_motorbikes.values():
                 print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
             # Print status OrderSystem
@@ -152,7 +152,7 @@ class Simulation:
                 
             # print("\n🔋 Battery Registry:")
             # for id, battery in self.battery_registry.items():
-            #     print(f"Battery ID {id}: {battery.battery_now:.2f}% | Cycle: {battery.cycle}")
+            #     print(f"Battery ID {id}: {battery.battery_now:.2f}% | Cycle: {battery.cycle} | Location: {battery.location} | Location ID: {battery.location_id}")
             # print(self.battery_registry)
             # print(self.battery_counter[0])
 
@@ -227,6 +227,8 @@ class Simulation:
                     "battery_now": battery.battery_now,
                     "battery_total_charged": battery.battery_total_charged,
                     "cycle": battery.cycle,
+                    "location": battery.location,
+                    "location_id": battery.location_id
                 }
                 for battery in self.battery_registry.values()
             ]

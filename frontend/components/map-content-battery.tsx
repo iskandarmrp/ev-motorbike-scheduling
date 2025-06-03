@@ -158,7 +158,7 @@ export default function MapContentBattery({
     Object.entries(batteryStations).forEach(([stationId, station]) => {
       if (!station) return;
 
-      const { lat, lon, name, available_batteries, total_capacity } = station;
+      const { lat, lon, name, available_batteries, total_slots } = station;
 
       // Skip if no valid coordinates
       if (!lat || !lon) return;
@@ -166,7 +166,7 @@ export default function MapContentBattery({
       // Create station icon
       const stationIcon = L.divIcon({
         className: "custom-station-marker",
-        html: `<div style="background-color: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; font-size: 10px;">${available_batteries}/${total_capacity}</div>`,
+        html: `<div style="background-color: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; font-size: 10px;">${available_batteries}/${total_slots}</div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
       });
@@ -187,7 +187,7 @@ export default function MapContentBattery({
           <h3 class="font-bold">${name}</h3>
           <p>Available Batteries: ${available_batteries}</p>
           <p>Charging: ${station.charging_batteries || 0}</p>
-          <p>Total Capacity: ${total_capacity}</p>
+          <p>Total Slots: ${total_slots}</p>
           <p>Location: ${lat.toFixed(6)}, ${lon.toFixed(6)}</p>
         </div>
       `;

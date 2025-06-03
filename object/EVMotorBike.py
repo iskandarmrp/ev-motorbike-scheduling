@@ -41,6 +41,8 @@ class EVMotorBike:
         self.swap_schedule = {}
 
         self.battery.id = copy.deepcopy(battery_counter[0])
+        self.battery.location = 'motor'
+        self.battery.location_id = copy.deepcopy(self.id)
         battery_registry[battery_counter[0]] = self.battery
         battery_counter[0] += 1
 
@@ -239,6 +241,12 @@ class EVMotorBike:
         station = battery_swap_station.get(station_id)
         slot_battery = station.slots[slot_index]
         ev_battery = self.battery
+
+        # Ubah tempat
+        slot_battery.location = 'motor'
+        slot_battery.location_id = copy.deepcopy(self.id)
+        ev_battery.location = 'station'
+        ev_battery.location_id = copy.deepcopy(station.id)
 
         # print(f"[{env.now}] 🔄 EV {self.id} swapping battery at Station {station.name} Slot {slot_index}")
         # print(f"  🔋 EV battery before swap: {ev_battery.battery_now}% (cycle: {ev_battery.cycle})")

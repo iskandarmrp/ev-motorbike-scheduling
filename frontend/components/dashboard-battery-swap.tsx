@@ -21,6 +21,16 @@ import { DEMO_MODE, DEBUG_MODE, BATTERY_WEBSOCKET_URL } from "@/lib/config";
 import { type BatterySwapStatus } from "@/lib/battery-api";
 import { Battery, Zap, Truck, CheckCircle, AlertTriangle } from "lucide-react";
 
+export interface Battery {
+  id: string;
+  capacity: number;
+  battery_now: number;
+  battery_total_charged: number;
+  cycle: number;
+  location: string;
+  location_id: string;
+}
+
 export interface MotorbikeState {
   id: string;
   current_lat: number;
@@ -38,11 +48,12 @@ export interface MotorbikeState {
 export interface BatteryStation {
   id: string;
   name: string;
+  total_slots: number;
   lat: number;
   lon: number;
+  slots: Battery[];
   available_batteries: number;
   charging_batteries: number;
-  total_capacity: number;
 }
 
 export interface OrderSchedule {
@@ -91,11 +102,22 @@ const mockBatteryStations: Record<string, BatteryStation> = {
   BS001: {
     id: "BS001",
     name: "Station Central Jakarta",
+    total_slots: 3,
     lat: -6.2088,
     lon: 106.8456,
+    slots: [
+      {
+        id: "1",
+        capacity: 100,
+        battery_now: 30,
+        battery_total_charged: 240,
+        cycle: 2,
+        location: "station",
+        location_id: "BS001",
+      },
+    ],
     available_batteries: 8,
     charging_batteries: 2,
-    total_capacity: 10,
   },
 };
 
@@ -214,14 +236,34 @@ export function DashboardBatterySwap() {
 
     safeArray(data.battery_swap_station).forEach((s, i) => {
       const id = safeString(s.id, `BS${i}`);
+
+      const battery_list = safeArray(s.slots).map((batteryId) => {
+        const battery = batteryMap.get(batteryId); // Ambil detail dari batteryMap
+        return {
+          id: safeString(batteryId),
+          capacity: safeNumber(battery?.capacity),
+          battery_now: safeNumber(battery?.battery_now),
+          battery_total_charged: safeNumber(battery?.battery_total_charged),
+          cycle: safeNumber(battery?.cycle),
+          location: safeString(battery?.location),
+          location_id: safeString(battery?.location_id),
+        };
+      });
+
+      const available_batteries = battery_list.filter(
+        (b) => safeNumber(b.battery_now) >= 80
+      ).length;
+      const charging_batteries = battery_list.length - available_batteries;
+
       stationMap[id] = {
         id,
         name: safeString(s.name),
+        total_slots: safeNumber(s.total_slots),
         lat: safeNumber(s.latitude),
         lon: safeNumber(s.longitude),
-        available_batteries: safeArray(s.slots).length,
-        charging_batteries: 0,
-        total_capacity: safeNumber(s.total_slots),
+        slots: battery_list,
+        available_batteries: safeNumber(available_batteries),
+        charging_batteries: safeNumber(charging_batteries),
       };
     });
 
@@ -470,7 +512,7 @@ export function DashboardBatterySwap() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="motorbikes">Motorbikes</TabsTrigger>
-          <TabsTrigger value="stations">Battery Stations</TabsTrigger>
+          <TabsTrigger value="stations">Battery Swap Stations</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="schedule">Swap Schedule</TabsTrigger>
           <TabsTrigger value="logs">Activity Logs</TabsTrigger>

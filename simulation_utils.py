@@ -49,9 +49,9 @@ def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, ba
 
     # Tambahkan order_schedule secara acak
     if random.random() < 0.3:  # 30% kemungkinan punya order
-        order_origin_lat = round(lat + random.uniform(-0.02, 0.02), 6) # ~ 2 km
+        order_origin_lat = round(min(lat + random.uniform(-0.02, 0.02), -6.125), 6) # ~ 2 km
         order_origin_lon = round(lon + random.uniform(-0.02, 0.02), 6)
-        order_destination_lat = round(order_origin_lat + random.uniform(-0.1, 0.1), 6) # ~ 5 km
+        order_destination_lat = round(min(order_origin_lat + random.uniform(-0.1, 0.1), -6.125), 6) # ~ 5 km
         order_destination_lon = round(order_origin_lon + random.uniform(-0.1, 0.1), 6)
 
         nearest_energy_distance_to_bss = float('inf')
