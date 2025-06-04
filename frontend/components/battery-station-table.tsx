@@ -96,8 +96,11 @@ export function BatteryStationTable({
                     <TableCell>{station.total_slots}</TableCell>
                     <TableCell>
                       <div className="space-y-1 text-sm max-h-40 overflow-y-auto">
-                        {station.slots.map((battery) => (
+                        {station.slots.map((battery, index) => (
                           <div key={battery.id} className="border rounded p-1">
+                            <div className="font-medium text-gray-800">
+                              Slot: {index + 1}
+                            </div>
                             <div className="font-medium text-gray-800">
                               Battery ID: {battery.id}
                             </div>

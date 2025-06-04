@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapContainerBattery } from "./map-container-battery";
 import { MotorbikeTable } from "./motorbike-table";
 import { BatteryStationTable } from "./battery-station-table";
+import { BatteryTable } from "./battery-table";
 import { OrderTable } from "./order-table";
 import { SwapScheduleTable } from "./swap-schedule-table";
 import { FleetActivityLog } from "./fleet-activity-log";
@@ -151,6 +152,27 @@ const mockSwapSchedules: SwapSchedule[] = [
   },
 ];
 
+const mockBatteries: Battery[] = [
+  {
+    id: "BAT001",
+    capacity: 100,
+    battery_now: 90,
+    battery_total_charged: 300,
+    cycle: 10,
+    location: "station",
+    location_id: "BS001",
+  },
+  {
+    id: "BAT002",
+    capacity: 100,
+    battery_now: 45,
+    battery_total_charged: 150,
+    cycle: 5,
+    location: "motorbike",
+    location_id: "MB001",
+  },
+];
+
 export function DashboardBatterySwap() {
   const [status, setStatus] = useState<BatterySwapStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,6 +190,7 @@ export function DashboardBatterySwap() {
   const [swapSchedules, setSwapSchedules] =
     useState<SwapSchedule[]>(mockSwapSchedules);
   const [activityLogs, setActivityLogs] = useState<string[]>([]);
+  const [batteries, setBatteries] = useState<Battery[]>(mockBatteries);
 
   // Helper functions for safe data conversion - FIXED VERSION
   const safeString = (value: any, defaultValue = ""): string => {
@@ -194,6 +217,16 @@ export function DashboardBatterySwap() {
     const stationMap: Record<string, BatteryStation> = {};
     const orders: OrderSchedule[] = [];
     const swaps: SwapSchedule[] = [];
+
+    const allBatteries: Battery[] = safeArray(data.batteries).map((b) => ({
+      id: safeString(b.id),
+      capacity: safeNumber(b.capacity),
+      battery_now: safeNumber(b.battery_now),
+      battery_total_charged: safeNumber(b.battery_total_charged),
+      cycle: safeNumber(b.cycle),
+      location: safeString(b.location),
+      location_id: safeString(b.location_id),
+    }));
 
     safeArray(data.fleet_ev_motorbikes).forEach((m, i) => {
       const battery = batteryMap.get(m.battery_id);
@@ -303,6 +336,7 @@ export function DashboardBatterySwap() {
     setBatteryStations(stationMap);
     setOrderSchedules(orders);
     setSwapSchedules(swaps);
+    setBatteries(allBatteries);
     setActivityLogs((prev) =>
       [
         `[${new Date().toLocaleTimeString()}] WebSocket update received: ${
@@ -312,6 +346,8 @@ export function DashboardBatterySwap() {
       ].slice(0, 50)
     );
   };
+
+  // console.log("Ini batere", batteries);
 
   useEffect(() => {
     if (DEMO_MODE || !BATTERY_WEBSOCKET_URL) return;
@@ -389,7 +425,9 @@ export function DashboardBatterySwap() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Electric Fleet Management</h1>
+          <h1 className="text-3xl font-bold">
+            Electric Motorbikes Fleet Management
+          </h1>
           <p className="text-muted-foreground">Battery Swap System Dashboard</p>
           {lastUpdated && (
             <p className="text-xs text-muted-foreground">
@@ -513,6 +551,7 @@ export function DashboardBatterySwap() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="motorbikes">Motorbikes</TabsTrigger>
           <TabsTrigger value="stations">Battery Swap Stations</TabsTrigger>
+          <TabsTrigger value="batteries">Batteries</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="schedule">Swap Schedule</TabsTrigger>
           <TabsTrigger value="logs">Activity Logs</TabsTrigger>
@@ -524,7 +563,7 @@ export function DashboardBatterySwap() {
               <CardHeader>
                 <CardTitle>Fleet Map</CardTitle>
                 <CardDescription>
-                  Real-time location of motorbikes and battery stations
+                  Real-time location of electric motorbikes and battery stations
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -562,6 +601,18 @@ export function DashboardBatterySwap() {
             </CardHeader>
             <CardContent>
               <BatteryStationTable batteryStations={batteryStations} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="batteries">
+          <Card>
+            <CardHeader>
+              <CardTitle>Batteries</CardTitle>
+              <CardDescription>Batteries status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BatteryTable batteries={batteries} />
             </CardContent>
           </Card>
         </TabsContent>
