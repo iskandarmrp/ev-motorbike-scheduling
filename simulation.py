@@ -95,7 +95,7 @@ class Simulation:
     def scheduling(self):
         while True:
             yield self.env.timeout(10)
-            
+            # print(self.env.now)
             # Buat event baru setiap kali scheduling dijalankan
             self.last_schedule_event = self.env.event()
             self.order_system.update_schedule_event(self.last_schedule_event)
@@ -119,6 +119,7 @@ class Simulation:
 
             # Selesaikan event agar search_driver bisa lanjut
             self.last_schedule_event.succeed()
+            # print(self.env.now)
 
 
     def monitor_status(self):
@@ -138,7 +139,7 @@ class Simulation:
             for order in self.order_system.order_active:
                 print(f"🔄 Order {order.id} - Status: {order.status}, "
                     f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f}), Time Created: {order.created_at}")
 
             print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
             for order in self.order_system.order_done:
@@ -238,10 +239,13 @@ class Simulation:
                     "id": order.id,
                     "status": order.status,
                     "searching_time": order.searching_time,
+                    "assigned_motorbike_id": order.assigned_motorbike_id,
                     "order_origin_lat": order.order_origin_lat,
                     "order_origin_lon": order.order_origin_lon,
                     "order_destination_lat": order.order_destination_lat,
                     "order_destination_lon": order.order_destination_lon,
+                    "created_at": order.created_at,
+                    "completed_at": order.completed_at,
                 }
                 for i, order in enumerate(self.order_system.order_search_driver)
             ]
@@ -250,10 +254,13 @@ class Simulation:
                     "id": order.id,
                     "status": order.status,
                     "searching_time": order.searching_time,
+                    "assigned_motorbike_id": order.assigned_motorbike_id,
                     "order_origin_lat": order.order_origin_lat,
                     "order_origin_lon": order.order_origin_lon,
                     "order_destination_lat": order.order_destination_lat,
                     "order_destination_lon": order.order_destination_lon,
+                    "created_at": order.created_at,
+                    "completed_at": order.completed_at,
                 }
                 for i, order in enumerate(self.order_system.order_active)
             ]
@@ -262,10 +269,13 @@ class Simulation:
                     "id": order.id,
                     "status": order.status,
                     "searching_time": order.searching_time,
+                    "assigned_motorbike_id": order.assigned_motorbike_id,
                     "order_origin_lat": order.order_origin_lat,
                     "order_origin_lon": order.order_origin_lon,
                     "order_destination_lat": order.order_destination_lat,
                     "order_destination_lon": order.order_destination_lon,
+                    "created_at": order.created_at,
+                    "completed_at": order.completed_at,
                 }
                 for i, order in enumerate(self.order_system.order_done)
             ]
@@ -274,10 +284,13 @@ class Simulation:
                     "id": order.id,
                     "status": order.status,
                     "searching_time": order.searching_time,
+                    "assigned_motorbike_id": order.assigned_motorbike_id,
                     "order_origin_lat": order.order_origin_lat,
                     "order_origin_lon": order.order_origin_lon,
                     "order_destination_lat": order.order_destination_lat,
                     "order_destination_lon": order.order_destination_lon,
+                    "created_at": order.created_at,
+                    "completed_at": order.completed_at,
                 }
                 for i, order in enumerate(self.order_system.order_failed)
             ]

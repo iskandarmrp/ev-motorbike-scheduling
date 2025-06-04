@@ -1,5 +1,7 @@
 import requests
 import random
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from .Order import Order
 
 OSRM_URL = "http://localhost:5000"
@@ -23,6 +25,7 @@ class OrderSystem:
             for i in range(random.randint(0, 4)):
                 if random.random() < 0.3:  # 30% kemungkinan order dibuat
                     order = Order(self.total_order + 1)
+                    order.created_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
                     self.order_search_driver.append(order)
                     self.total_order += 1
                     print(f"[{env.now}] 📦 Order {order.id} dibuat")
@@ -89,6 +92,7 @@ class OrderSystem:
                         }
                         nearest_ev.status = "heading to order"
                         order.status = "on going"
+                        order.assigned_motorbike_id = nearest_ev.id
                         self.order_search_driver.remove(order)
                         self.order_active.append(order)
                         print(f"[{env.now}] 🚕 Order {order.id} assigned to EV {ev.id}")
@@ -97,6 +101,7 @@ class OrderSystem:
 
                         if order.searching_time == 20:
                             order.status = "failed"
+                            order.completed_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
                             self.order_search_driver.remove(order)
                             self.order_failed.append(order)
 

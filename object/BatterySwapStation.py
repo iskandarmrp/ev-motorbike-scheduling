@@ -43,7 +43,7 @@ class BatterySwapStation:
                         battery.battery_now += charging_rate
                         battery.battery_total_charged += charging_rate
                 battery.cycle = battery.battery_total_charged / 100
-                # print(
-                #     f"[{env.now}] 🔌 BSS {self.name} - Slot {idx}: Battery {battery.battery_now:.2f}%, Cycle {battery.cycle:.2f}, Battery total charged {battery.battery_total_charged:.2f}"
-                # )
+                print(
+                    f"[{env.now}] 🔌 BSS {self.name} - Slot {idx}: Battery {battery.battery_now:.2f}%, Cycle {battery.cycle:.2f}, Battery total charged {battery.battery_total_charged:.2f}"
+                )
             yield env.timeout(1)

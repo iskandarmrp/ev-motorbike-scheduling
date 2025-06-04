@@ -1,6 +1,8 @@
 import requests
 import random
 import polyline
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from object.EVMotorBike import EVMotorBike
 from object.Order import Order
 
@@ -79,6 +81,8 @@ def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, ba
                 order.order_origin_lon = order_origin_lon
                 order.order_destination_lat = order_destination_lat
                 order.order_destination_lon = order_destination_lon
+                order.created_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
+                order.assigned_motorbike_id = ev.id
                 order_system.order_active.append(order)
                 order_system.total_order += 1
 

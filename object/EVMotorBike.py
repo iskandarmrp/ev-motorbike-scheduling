@@ -2,6 +2,8 @@ import random
 import copy
 import requests
 import polyline
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from .Battery import Battery
 
 OSRM_URL = "http://localhost:5000"
@@ -48,6 +50,7 @@ class EVMotorBike:
 
     def drive(self, env, battery_swap_station, order_system):
         while True:
+            # print('ini waktu env', env.now)
             if self.online_status == 'online':
                 if self.status == 'idle':
                     # print('Swap Schedule:', self.swap_schedule)
@@ -150,6 +153,7 @@ class EVMotorBike:
                             for order in order_system.order_active:
                                 if order.id == order_id:
                                     order.status = "done"
+                                    order.completed_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
                                     order_system.order_active.remove(order)
                                     order_system.order_done.append(order)
                                     # print(f"[{env.now:.2f}m] ✅ Order {order_id} selesai oleh EV {self.id}")

@@ -620,10 +620,8 @@ export function DashboardBatterySwap() {
         <TabsContent value="orders">
           <Card>
             <CardHeader>
-              <CardTitle>Order Management</CardTitle>
-              <CardDescription>
-                Track and manage delivery orders
-              </CardDescription>
+              <CardTitle>Orders</CardTitle>
+              <CardDescription>Track orders</CardDescription>
             </CardHeader>
             <CardContent>
               <OrderTable
