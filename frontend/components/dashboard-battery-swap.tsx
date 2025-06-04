@@ -20,7 +20,15 @@ import { FleetActivityLog } from "./fleet-activity-log";
 import { ConnectionStatus } from "./connection-status";
 import { DEMO_MODE, DEBUG_MODE, BATTERY_WEBSOCKET_URL } from "@/lib/config";
 import { type BatterySwapStatus } from "@/lib/battery-api";
-import { Battery, Zap, Truck, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  Battery,
+  Zap,
+  Truck,
+  CheckCircle,
+  AlertTriangle,
+  Bike,
+  Hourglass,
+} from "lucide-react";
 
 export interface Battery {
   id: string;
@@ -479,7 +487,7 @@ export function DashboardBatterySwap() {
             <CardTitle className="text-sm font-medium">
               Total Motorbikes
             </CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
+            <Bike className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -510,6 +518,21 @@ export function DashboardBatterySwap() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pending Orders
+            </CardTitle>
+            <Hourglass className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {safeArray(status?.order_search_driver).length}
+            </div>
+            <p className="text-xs text-muted-foreground">Looking for driver</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -518,6 +541,38 @@ export function DashboardBatterySwap() {
               {safeArray(status?.order_active).length}
             </div>
             <p className="text-xs text-muted-foreground">Orders in progress</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Completed Orders
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {safeArray(status?.order_done).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Orders successfully completed
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Failed Orders</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {safeArray(status?.order_failed).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Orders failed or cancelled
+            </p>
           </CardContent>
         </Card>
 
