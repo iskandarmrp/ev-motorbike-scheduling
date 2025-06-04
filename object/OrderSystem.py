@@ -1,6 +1,6 @@
 import requests
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from .Order import Order
 
@@ -19,18 +19,18 @@ class OrderSystem:
     def update_schedule_event(self, event):
         self.last_schedule_event = event
 
-    def generate_order(self, env):
+    def generate_order(self, env, start_time):
         while True:
             yield env.timeout(3)
             for i in range(random.randint(0, 4)):
                 if random.random() < 0.3:  # 30% kemungkinan order dibuat
                     order = Order(self.total_order + 1)
-                    order.created_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
+                    order.created_at = (start_time + timedelta(minutes=env.now)).isoformat()
                     self.order_search_driver.append(order)
                     self.total_order += 1
                     print(f"[{env.now}] 📦 Order {order.id} dibuat")
 
-    def search_driver(self, env, fleet_ev_motorbikes, battery_swap_station):
+    def search_driver(self, env, fleet_ev_motorbikes, battery_swap_station, start_time):
         while True:
             if self.last_schedule_event and not self.last_schedule_event.processed:
                 yield self.last_schedule_event
@@ -101,7 +101,7 @@ class OrderSystem:
 
                         if order.searching_time == 20:
                             order.status = "failed"
-                            order.completed_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
+                            order.completed_at = (start_time + timedelta(minutes=env.now)).isoformat()
                             self.order_search_driver.remove(order)
                             self.order_failed.append(order)
 

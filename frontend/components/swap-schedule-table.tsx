@@ -129,8 +129,8 @@ export function SwapScheduleTable({
                       min
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor("on going")}>
-                        on going
+                      <Badge className={getStatusColor(schedule.status)}>
+                        {schedule.status}
                       </Badge>
                     </TableCell>
                   </TableRow>

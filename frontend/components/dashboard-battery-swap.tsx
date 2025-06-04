@@ -82,6 +82,7 @@ export interface SwapSchedule {
   exchanged_battery: number;
   received_battery: number;
   received_battery_cycle: number;
+  status: string;
 }
 
 // Mock data for fallback
@@ -149,6 +150,7 @@ const mockSwapSchedules: SwapSchedule[] = [
     exchanged_battery: 10,
     received_battery: 100,
     received_battery_cycle: 22,
+    status: "on going",
   },
 ];
 
@@ -244,6 +246,7 @@ export function DashboardBatterySwap() {
         exchanged_battery: safeNumber(s.exchanged_battery),
         received_battery: safeNumber(s.received_battery),
         received_battery_cycle: safeNumber(s.received_battery_cycle),
+        status: safeString(s.status),
       })
     );
 
@@ -348,6 +351,22 @@ export function DashboardBatterySwap() {
     );
   };
 
+  function formatTime(isoString: string) {
+    const date = new Date(isoString);
+
+    return (
+      date.toLocaleString("id-ID", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }) + " WIB"
+    );
+  }
+
   // console.log("Ini batere", batteries);
 
   useEffect(() => {
@@ -430,11 +449,10 @@ export function DashboardBatterySwap() {
             Electric Motorbikes Fleet Management
           </h1>
           <p className="text-muted-foreground">Battery Swap System Dashboard</p>
-          {lastUpdated && (
-            <p className="text-xs text-muted-foreground">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </p>
-          )}
+          <span className="text-xs text-muted-foreground">
+            Last updated:{" "}
+            {status?.time_now && formatTime(status.time_now.toString())}
+          </span>
         </div>
         {/* <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm">

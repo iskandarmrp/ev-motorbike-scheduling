@@ -1,7 +1,7 @@
 import requests
 import random
 import polyline
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from object.EVMotorBike import EVMotorBike
 from object.Order import Order
@@ -28,7 +28,7 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
         print(f"Gagal koneksi ke OSRM: {e}")
         return None, None
 
-def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, battery_counter):
+def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, battery_counter, start_time, env_now):
     max_speed = 60  # km/h
     battery_capacity = 100
     # battery_now = 100
@@ -81,7 +81,7 @@ def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, ba
                 order.order_origin_lon = order_origin_lon
                 order.order_destination_lat = order_destination_lat
                 order.order_destination_lon = order_destination_lon
-                order.created_at = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat()
+                order.created_at = (start_time + timedelta(minutes=env_now)).isoformat()
                 order.assigned_motorbike_id = ev.id
                 order_system.order_active.append(order)
                 order_system.total_order += 1
@@ -175,6 +175,8 @@ def convert_station_to_list(battery_swap_station):
     return station_list
 
 def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter):
+    updated_swap_ids = set()
+
     for ev_id, data in schedule.items():
         if data['assigned']:
             # Assign swap_id
@@ -182,6 +184,10 @@ def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter):
                 swap_id = swap_schedule_counter[0]
                 data['swap_id'] = swap_id
                 swap_schedule_counter[0] += 1
+            else:
+                swap_id = data['swap_id']
+
+            updated_swap_ids.add(swap_id)
 
             # Simpan ke dalam swap_schedules
             swap_schedules[data['swap_id']] = {
@@ -195,8 +201,14 @@ def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter):
                 'waiting_time': data['waiting_time'],
                 'exchanged_battery': data['exchanged_battery'],
                 'received_battery': data['received_battery'],
-                'received_battery_cycle': data['received_battery_cycle']
+                'received_battery_cycle': data['received_battery_cycle'],
+                'status': data['status'],
             }
+    
+    # Tandai yang tidak terupdate sebagai 'done'
+    for swap_id in swap_schedules:
+        if swap_id not in updated_swap_ids:
+            swap_schedules[swap_id]['status'] = 'done'
 
 def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):
     for ev_id, ev in fleet_ev_motorbikes.items():

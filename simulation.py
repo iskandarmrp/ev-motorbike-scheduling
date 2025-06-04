@@ -2,6 +2,8 @@ import simpy
 import osmnx as ox
 import random
 import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
@@ -36,6 +38,7 @@ status_data = {
 class Simulation:
     def __init__(self, jumlah_ev_motorbike, jumlah_battery_swap_station):
         self.env = simpy.Environment() # Inisialisasi ENV
+        self.start_time = datetime.now(ZoneInfo("Asia/Jakarta"))
         self.jumlah_ev_motorbike = jumlah_ev_motorbike
         self.jumlah_battery_swap_station = jumlah_battery_swap_station
         self.fleet_ev_motorbikes = {}
@@ -49,7 +52,7 @@ class Simulation:
 
     def setup_fleet_ev_motorbike(self):
         for i in range(self.jumlah_ev_motorbike):
-            ev = ev_generator(i, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter)
+            ev = ev_generator(i, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter, self.start_time, self.env.now)
 
             self.fleet_ev_motorbikes[i] = ev
 
@@ -74,7 +77,7 @@ class Simulation:
         else:
             new_id = 0
 
-        ev = ev_generator(new_id, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter)
+        ev = ev_generator(new_id, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter, self.start_time, self.env.now)
 
         self.fleet_ev_motorbikes[new_id] = ev
         print(f"EV baru ditambahkan dengan ID {new_id}")
@@ -171,13 +174,13 @@ class Simulation:
 
         # SOKIN: Kalau ada ev baru masuk gimana?
         for ev in self.fleet_ev_motorbikes.values():
-            self.env.process(ev.drive(self.env, self.battery_swap_station, self.order_system))
+            self.env.process(ev.drive(self.env, self.battery_swap_station, self.order_system, self.start_time))
 
         for battery_swap_station in self.battery_swap_station.values():
             self.env.process(battery_swap_station.charge_batteries(self.env))
 
-        self.env.process(self.order_system.generate_order(self.env))
-        self.env.process(self.order_system.search_driver(self.env, self.fleet_ev_motorbikes, self.battery_swap_station))
+        self.env.process(self.order_system.generate_order(self.env, self.start_time))
+        self.env.process(self.order_system.search_driver(self.env, self.fleet_ev_motorbikes, self.battery_swap_station, self.start_time))
 
     def run(self):
         self.setup_battery_swap_station()
@@ -302,7 +305,7 @@ class Simulation:
                 }
                 for i, order in enumerate(self.order_system.order_failed)
             ]
-            status_data["time_now"] = self.env.now
+            status_data["time_now"] = (self.start_time + timedelta(minutes=self.env.now)).isoformat()
             status_data["swap_schedules"] = [
                 {
                     "id": swap_id,
@@ -316,7 +319,8 @@ class Simulation:
                     'waiting_time': schedule['waiting_time'],
                     'exchanged_battery': schedule['exchanged_battery'],
                     'received_battery': schedule['received_battery'],
-                    'received_battery_cycle': schedule['received_battery_cycle']
+                    'received_battery_cycle': schedule['received_battery_cycle'],
+                    'status': schedule['status']
                 }
                 for swap_id, schedule in self.swap_schedules.items()
             ]
