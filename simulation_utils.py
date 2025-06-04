@@ -174,7 +174,7 @@ def convert_station_to_list(battery_swap_station):
         station_list.append(battery_list)
     return station_list
 
-def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter):
+def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter, start_time, env_now):
     updated_swap_ids = set()
 
     for ev_id, data in schedule.items():
@@ -184,26 +184,49 @@ def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter):
                 swap_id = swap_schedule_counter[0]
                 data['swap_id'] = swap_id
                 swap_schedule_counter[0] += 1
+
+                time_estimation = env_now + data['travel_time'] + data['waiting_time']
+
+                # Simpan ke dalam swap_schedules
+                swap_schedules[data['swap_id']] = {
+                    'ev_id': ev_id,
+                    'battery_now': data['battery_now'],
+                    'battery_cycle': data['battery_cycle'],
+                    'battery_station': data['battery_station'],
+                    'slot': data['slot'],
+                    'energy_distance': data['energy_distance'],
+                    'travel_time': data['travel_time'],
+                    'waiting_time': data['waiting_time'],
+                    'exchanged_battery': data['exchanged_battery'],
+                    'received_battery': data['received_battery'],
+                    'received_battery_cycle': data['received_battery_cycle'],
+                    'status': data['status'],
+                    'scheduled_time': (start_time + timedelta(minutes=time_estimation)).isoformat(),
+                }
+                data['scheduled_time'] = (start_time + timedelta(minutes=time_estimation)).isoformat()
             else:
                 swap_id = data['swap_id']
 
-            updated_swap_ids.add(swap_id)
+                # Simpan ke dalam swap_schedules
+                swap_schedules[data['swap_id']] = {
+                    'ev_id': ev_id,
+                    'battery_now': data['battery_now'],
+                    'battery_cycle': data['battery_cycle'],
+                    'battery_station': data['battery_station'],
+                    'slot': data['slot'],
+                    'energy_distance': data['energy_distance'],
+                    'travel_time': data['travel_time'],
+                    'waiting_time': data['waiting_time'],
+                    'exchanged_battery': data['exchanged_battery'],
+                    'received_battery': data['received_battery'],
+                    'received_battery_cycle': data['received_battery_cycle'],
+                    'status': data['status'],
+                    'scheduled_time': data['scheduled_time'],
+                }
+                
+                print('scheduled 2:', data['scheduled_time'])
 
-            # Simpan ke dalam swap_schedules
-            swap_schedules[data['swap_id']] = {
-                'ev_id': ev_id,
-                'battery_now': data['battery_now'],
-                'battery_cycle': data['battery_cycle'],
-                'battery_station': data['battery_station'],
-                'slot': data['slot'],
-                'energy_distance': data['energy_distance'],
-                'travel_time': data['travel_time'],
-                'waiting_time': data['waiting_time'],
-                'exchanged_battery': data['exchanged_battery'],
-                'received_battery': data['received_battery'],
-                'received_battery_cycle': data['received_battery_cycle'],
-                'status': data['status'],
-            }
+            updated_swap_ids.add(swap_id)
     
     # Tandai yang tidak terupdate sebagai 'done'
     for swap_id in swap_schedules:

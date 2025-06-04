@@ -83,6 +83,7 @@ export interface SwapSchedule {
   received_battery: number;
   received_battery_cycle: number;
   status: string;
+  scheduled_time: string;
 }
 
 // Mock data for fallback
@@ -151,6 +152,7 @@ const mockSwapSchedules: SwapSchedule[] = [
     received_battery: 100,
     received_battery_cycle: 22,
     status: "on going",
+    scheduled_time: "1-2-3",
   },
 ];
 
@@ -247,6 +249,7 @@ export function DashboardBatterySwap() {
         received_battery: safeNumber(s.received_battery),
         received_battery_cycle: safeNumber(s.received_battery_cycle),
         status: safeString(s.status),
+        scheduled_time: safeString(s.scheduled_time),
       })
     );
 

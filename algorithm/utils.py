@@ -115,6 +115,7 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
             'received_battery': None,
             'received_battery_cycle': None,
             'status': None,
+            'scheduled_time': None,
         }
     else:
         # Acak salah satu pilihan valid
@@ -134,6 +135,7 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
             'received_battery': 0,  # akan diupdate
             'received_battery_cycle': 0, # akan diupdate
             'status': 'on going',
+            'scheduled_time': None,
         }
 
     # Update ulang nilai waiting_time dan received_battery setelah perubahan

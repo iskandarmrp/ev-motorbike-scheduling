@@ -52,6 +52,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
                 'received_battery': None,
                 'received_battery_cycle': None,
                 'status': None,
+                'scheduled_time': None,
             }
             continue
 
@@ -74,6 +75,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
             'received_battery': 0,  # akan diupdate
             'received_battery_cycle': 0, # akan diupdate
             'status': 'on going',
+            'scheduled_time': None,
         }
 
     # Update ulang waiting_time dan received_battery

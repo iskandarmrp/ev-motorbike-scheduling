@@ -48,16 +48,37 @@ export function SwapScheduleTable({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "scheduled":
+      case "on going":
         return "bg-blue-500";
       case "in_progress":
         return "bg-orange-500";
-      case "completed":
+      case "done":
         return "bg-green-500";
       default:
         return "bg-gray-500";
     }
   };
+
+  // Fungsi untuk beri ranking status
+  const getStatusPriority = (status: string) => {
+    switch (status) {
+      case "in_progress":
+        return 1;
+      case "on going":
+        return 2;
+      case "done":
+        return 3;
+      default:
+        return 4; // status lain seperti undefined/null akan paling bawah
+    }
+  };
+
+  // Sort hasil filteredSchedules
+  const sortedSchedules = [...filteredSchedules].sort(
+    (a, b) => getStatusPriority(a.status) - getStatusPriority(b.status)
+  );
+
+  console.log("ini schedule:", sortedSchedules);
 
   return (
     <div className="space-y-4">
@@ -91,7 +112,7 @@ export function SwapScheduleTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredSchedules.length === 0 ? (
+            {sortedSchedules.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={6}
@@ -101,7 +122,7 @@ export function SwapScheduleTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredSchedules.map((schedule, index) => {
+              sortedSchedules.map((schedule, index) => {
                 const motorbike = motorbikeStates[schedule.ev_id];
                 const station = batteryStations[schedule.battery_station];
 
@@ -123,10 +144,7 @@ export function SwapScheduleTable({
                       {schedule.waiting_time.toFixed(1)} min
                     </TableCell>
                     <TableCell>
-                      {(schedule.travel_time + schedule.waiting_time).toFixed(
-                        1
-                      )}{" "}
-                      min
+                      {new Date(schedule.scheduled_time).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(schedule.status)}>

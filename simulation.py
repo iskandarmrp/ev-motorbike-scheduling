@@ -122,7 +122,7 @@ class Simulation:
             )
             print("Schedule:", schedule)
             print("Score:", score)
-            add_and_save_swap_schedule(schedule, self.swap_schedules, self.swap_schedule_counter)
+            add_and_save_swap_schedule(schedule, self.swap_schedules, self.swap_schedule_counter, self.start_time, self.env.now)
             apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
 
             # Selesaikan event agar search_driver bisa lanjut
@@ -159,8 +159,9 @@ class Simulation:
                 print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
                     f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
-            print('swap schedules:', self.swap_schedules)
-            print('swap schedules counter:', self.swap_schedule_counter[0])
+            # print('swap schedules:', self.swap_schedules)
+            # print('swap schedules counter:', self.swap_schedule_counter[0])
+            print('status data swap schedule', status_data['swap_schedules'])
                 
             # print("\n🔋 Battery Registry:")
             # for id, battery in self.battery_registry.items():
@@ -320,7 +321,8 @@ class Simulation:
                     'exchanged_battery': schedule['exchanged_battery'],
                     'received_battery': schedule['received_battery'],
                     'received_battery_cycle': schedule['received_battery_cycle'],
-                    'status': schedule['status']
+                    'status': schedule['status'],
+                    'scheduled_time': schedule['scheduled_time'],
                 }
                 for swap_id, schedule in self.swap_schedules.items()
             ]
