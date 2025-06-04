@@ -89,10 +89,10 @@ export function MotorbikeTable({ motorbikeStates = {} }: MotorbikeTableProps) {
             className="max-w-sm"
           />
         </div>
-        <Button variant="outline" size="sm">
+        {/* <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export
-        </Button>
+        </Button> */}
       </div>
 
       <div className="rounded-md border">

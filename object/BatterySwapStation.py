@@ -16,7 +16,7 @@ class BatterySwapStation:
         self.total_slots = len(self.slots)
 
     def generate_random_batteries(self, battery_registry, battery_counter):
-        jumlah_baterai = random.randint(2,5) # Jumlah slot diisi
+        jumlah_baterai = random.randint(5, 10) # Jumlah slot diisi
         for _ in range(jumlah_baterai):
             capacity = 100
             battery_now = random.randint(int(0.7 * capacity), capacity)  # minimal 70%

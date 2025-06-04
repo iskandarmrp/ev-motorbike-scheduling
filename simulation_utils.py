@@ -174,6 +174,30 @@ def convert_station_to_list(battery_swap_station):
         station_list.append(battery_list)
     return station_list
 
+def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter):
+    for ev_id, data in schedule.items():
+        if data['assigned']:
+            # Assign swap_id
+            if data['swap_id'] is None:
+                swap_id = swap_schedule_counter[0]
+                data['swap_id'] = swap_id
+                swap_schedule_counter[0] += 1
+
+            # Simpan ke dalam swap_schedules
+            swap_schedules[data['swap_id']] = {
+                'ev_id': ev_id,
+                'battery_now': data['battery_now'],
+                'battery_cycle': data['battery_cycle'],
+                'battery_station': data['battery_station'],
+                'slot': data['slot'],
+                'energy_distance': data['energy_distance'],
+                'travel_time': data['travel_time'],
+                'waiting_time': data['waiting_time'],
+                'exchanged_battery': data['exchanged_battery'],
+                'received_battery': data['received_battery'],
+                'received_battery_cycle': data['received_battery_cycle']
+            }
+
 def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):
     for ev_id, ev in fleet_ev_motorbikes.items():
         if ev_id in solution:

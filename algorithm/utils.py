@@ -103,6 +103,7 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
         # Jika tidak ada opsi valid, set jadi unassigned
         neighbor[ev_id] = {
             'assigned': False,
+            'swap_id': None,
             'battery_now': data['battery_now'],
             'battery_cycle': data['battery_cycle'],
             'battery_station': None,
@@ -120,6 +121,7 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
         exchanged_battery = data['battery_now'] - energy_dist
         neighbor[ev_id] = {
             'assigned': True,
+            'swap_id': None,
             'battery_now': data['battery_now'],
             'battery_cycle': data['battery_cycle'],
             'battery_station': station_idx,

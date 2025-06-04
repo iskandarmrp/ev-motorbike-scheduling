@@ -70,16 +70,16 @@ export interface OrderSchedule {
 }
 
 export interface SwapSchedule {
-  motorbike_id: number;
-  assigned: boolean;
+  id: string;
+  ev_id: string;
   battery_now: number;
   battery_cycle: number;
-  battery_station: string | number;
-  slot: number;
+  battery_station: string;
+  slot: string;
   energy_distance: number;
   travel_time: number;
   waiting_time: number;
-  exchanged_battery: string | number;
+  exchanged_battery: number;
   received_battery: number;
   received_battery_cycle: number;
 }
@@ -137,18 +137,18 @@ const mockOrderSchedules: OrderSchedule[] = [
 
 const mockSwapSchedules: SwapSchedule[] = [
   {
-    motorbike_id: 1,
-    assigned: true,
-    battery_now: 80,
-    battery_cycle: 120,
-    battery_station: 1,
-    slot: 1,
-    energy_distance: 125,
-    travel_time: 150,
-    waiting_time: 130,
-    exchanged_battery: 12,
+    id: "1",
+    ev_id: "1",
+    battery_now: 15,
+    battery_cycle: 23,
+    battery_station: "1",
+    slot: "1",
+    energy_distance: 123,
+    travel_time: 126,
+    waiting_time: 12,
+    exchanged_battery: 10,
     received_battery: 100,
-    received_battery_cycle: 20,
+    received_battery_cycle: 22,
   },
 ];
 
@@ -218,6 +218,8 @@ export function DashboardBatterySwap() {
     const orders: OrderSchedule[] = [];
     const swaps: SwapSchedule[] = [];
 
+    console.log("swap schedules", data.swap_schedules);
+
     const allBatteries: Battery[] = safeArray(data.batteries).map((b) => ({
       id: safeString(b.id),
       capacity: safeNumber(b.capacity),
@@ -227,6 +229,23 @@ export function DashboardBatterySwap() {
       location: safeString(b.location),
       location_id: safeString(b.location_id),
     }));
+
+    const allSwapSchedules: SwapSchedule[] = safeArray(data.swap_schedules).map(
+      (s) => ({
+        id: safeString(s.id),
+        ev_id: safeString(s.ev_id),
+        battery_now: safeNumber(s.battery_now),
+        battery_cycle: safeNumber(s.battery_cycle),
+        battery_station: safeString(s.battery_station),
+        slot: safeString(s.slot),
+        energy_distance: safeNumber(s.energy_distance),
+        travel_time: safeNumber(s.travel_time),
+        waiting_time: safeNumber(s.waiting_time),
+        exchanged_battery: safeNumber(s.exchanged_battery),
+        received_battery: safeNumber(s.received_battery),
+        received_battery_cycle: safeNumber(s.received_battery_cycle),
+      })
+    );
 
     safeArray(data.fleet_ev_motorbikes).forEach((m, i) => {
       const battery = batteryMap.get(m.battery_id);
@@ -247,24 +266,6 @@ export function DashboardBatterySwap() {
             ? m.swap_schedule
             : undefined,
       };
-      if (m.swap_schedule) {
-        swaps.push({
-          motorbike_id: m.id,
-          assigned: Boolean(m.swap_schedule.assigned),
-          battery_now: safeNumber(m.swap_schedule.battery_now),
-          battery_cycle: safeNumber(m.swap_schedule.battery_cycle),
-          battery_station: m.swap_schedule.battery_station,
-          slot: safeNumber(m.swap_schedule.slot),
-          energy_distance: safeNumber(m.swap_schedule.energy_distance),
-          travel_time: safeNumber(m.swap_schedule.travel_time),
-          waiting_time: safeNumber(m.swap_schedule.waiting_time),
-          exchanged_battery: m.swap_schedule.exchanged_battery,
-          received_battery: safeNumber(m.swap_schedule.received_battery),
-          received_battery_cycle: safeNumber(
-            m.swap_schedule.received_battery_cycle
-          ),
-        });
-      }
     });
 
     safeArray(data.battery_swap_station).forEach((s, i) => {
@@ -335,7 +336,7 @@ export function DashboardBatterySwap() {
     setMotorbikeStates(motorbikeMap);
     setBatteryStations(stationMap);
     setOrderSchedules(orders);
-    setSwapSchedules(swaps);
+    setSwapSchedules(allSwapSchedules);
     setBatteries(allBatteries);
     setActivityLogs((prev) =>
       [
@@ -435,7 +436,7 @@ export function DashboardBatterySwap() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm">
             {DEMO_MODE ? "Demo Mode" : "Live Data"}
           </Badge>
@@ -445,7 +446,7 @@ export function DashboardBatterySwap() {
           >
             {dataSource === "api" ? "API Data" : "Mock Data"}
           </Badge>
-        </div>
+        </div> */}
       </div>
 
       {/* <ConnectionStatus /> */}
@@ -636,9 +637,7 @@ export function DashboardBatterySwap() {
           <Card>
             <CardHeader>
               <CardTitle>Battery Swap Schedule</CardTitle>
-              <CardDescription>
-                Scheduled battery swaps and priorities
-              </CardDescription>
+              <CardDescription>Schedules</CardDescription>
             </CardHeader>
             <CardContent>
               <SwapScheduleTable

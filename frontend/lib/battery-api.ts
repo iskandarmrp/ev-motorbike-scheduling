@@ -12,6 +12,7 @@ export interface BatterySwapStatus {
   order_done: any[];
   order_failed: any[];
   time_now: string | number;
+  swap_schedules: any[];
 }
 
 export async function fetchBatteryRoot(): Promise<any> {

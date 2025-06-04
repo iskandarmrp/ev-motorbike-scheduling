@@ -1,37 +1,37 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Search, Download, Filter } from "lucide-react"
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, Download, Filter } from "lucide-react";
 
 interface FleetActivityLogProps {
-  logs?: string[]
+  logs?: string[];
 }
 
 export function FleetActivityLog({ logs = [] }: FleetActivityLogProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filter, setFilter] = useState("all")
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
 
   const filteredLogs = logs.filter((log) => {
     if (searchTerm && !log.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false
+      return false;
     }
 
     if (filter === "error" && !log.toLowerCase().includes("error")) {
-      return false
+      return false;
     }
 
     if (filter === "warning" && !log.toLowerCase().includes("warning")) {
-      return false
+      return false;
     }
 
     if (filter === "info" && !log.toLowerCase().includes("system")) {
-      return false
+      return false;
     }
 
-    return true
-  })
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -59,10 +59,10 @@ export function FleetActivityLog({ logs = [] }: FleetActivityLogProps) {
               <option value="info">System Info</option>
             </select>
           </div>
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Export
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -78,8 +78,8 @@ export function FleetActivityLog({ logs = [] }: FleetActivityLogProps) {
                   log.includes("error")
                     ? "bg-red-50 text-red-800"
                     : log.includes("warning")
-                      ? "bg-yellow-50 text-yellow-800"
-                      : "bg-white text-gray-800"
+                    ? "bg-yellow-50 text-yellow-800"
+                    : "bg-white text-gray-800"
                 }`}
               >
                 {log}
@@ -89,5 +89,5 @@ export function FleetActivityLog({ logs = [] }: FleetActivityLogProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

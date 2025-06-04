@@ -64,6 +64,7 @@ async def broadcast_status_periodically():
             "order_done": status_data.get("order_done"),
             "order_failed": status_data.get("order_failed"),
             "time_now": status_data.get("time_now"),
+            "swap_schedules": status_data.get("swap_schedules"),
         }
 
         # Kirim ke semua klien

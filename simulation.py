@@ -12,7 +12,8 @@ from simulation_utils import (
     update_energy_distance_and_travel_time_all,
     convert_fleet_ev_motorbikes_to_dict,
     convert_station_to_list,
-    apply_schedule_to_ev_fleet
+    apply_schedule_to_ev_fleet,
+    add_and_save_swap_schedule
 )
 from algorithm.algorithm import simulated_annealing
 
@@ -29,6 +30,7 @@ status_data = {
     "order_done": [],
     "order_failed": [],
     "time_now": None,
+    "swap_schedules": [],
 }
 
 class Simulation:
@@ -42,6 +44,8 @@ class Simulation:
         self.last_schedule_event = None
         self.battery_registry = {}
         self.battery_counter = [0]
+        self.swap_schedule_counter = [0]
+        self.swap_schedules = {}
 
     def setup_fleet_ev_motorbike(self):
         for i in range(self.jumlah_ev_motorbike):
@@ -115,6 +119,7 @@ class Simulation:
             )
             print("Schedule:", schedule)
             print("Score:", score)
+            add_and_save_swap_schedule(schedule, self.swap_schedules, self.swap_schedule_counter)
             apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
 
             # Selesaikan event agar search_driver bisa lanjut
@@ -150,6 +155,9 @@ class Simulation:
             for order in self.order_system.order_failed:
                 print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
                     f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+                
+            print('swap schedules:', self.swap_schedules)
+            print('swap schedules counter:', self.swap_schedule_counter[0])
                 
             # print("\n🔋 Battery Registry:")
             # for id, battery in self.battery_registry.items():
@@ -295,6 +303,23 @@ class Simulation:
                 for i, order in enumerate(self.order_system.order_failed)
             ]
             status_data["time_now"] = self.env.now
+            status_data["swap_schedules"] = [
+                {
+                    "id": swap_id,
+                    'ev_id': schedule['ev_id'],
+                    'battery_now': schedule['battery_now'],
+                    'battery_cycle': schedule['battery_cycle'],
+                    'battery_station': schedule['battery_station'],
+                    'slot': schedule['slot'],
+                    'energy_distance': schedule['energy_distance'],
+                    'travel_time': schedule['travel_time'],
+                    'waiting_time': schedule['waiting_time'],
+                    'exchanged_battery': schedule['exchanged_battery'],
+                    'received_battery': schedule['received_battery'],
+                    'received_battery_cycle': schedule['received_battery_cycle']
+                }
+                for swap_id, schedule in self.swap_schedules.items()
+            ]
 
             time.sleep(delta)  # delay real time
 

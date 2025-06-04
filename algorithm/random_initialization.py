@@ -40,6 +40,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         if not valid_options:
             solution[i] = {
                 'assigned': False,
+                'swap_id': None,
                 'battery_now': data['battery_now'],
                 'battery_cycle': data['battery_cycle'],
                 'battery_station': None,
@@ -60,6 +61,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
 
         solution[i] = {
             'assigned': True,
+            'swap_id': None,
             'battery_now': data['battery_now'],
             'battery_cycle': data['battery_cycle'],
             'battery_station': station_idx,
