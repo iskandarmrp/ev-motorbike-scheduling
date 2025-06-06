@@ -26,7 +26,7 @@ def startup_event():
     def run_sim():
         sim = Simulation(
             jumlah_ev_motorbike=100,
-            jumlah_battery_swap_station=10
+            csv_path="scraping/data/sgb_jakarta_completed.csv"
         )
         sim.run()
 

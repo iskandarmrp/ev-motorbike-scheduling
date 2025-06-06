@@ -25,6 +25,8 @@ class OrderSystem:
             for i in range(random.randint(0, 4)):
                 if random.random() < 0.3:  # 30% kemungkinan order dibuat
                     order = Order(self.total_order + 1)
+                    order.order_origin_lat, order.order_origin_lon = self.snap_to_road(order.order_origin_lat, order.order_origin_lon)
+                    order.order_destination_lat, order.order_destination_lon = self.snap_to_road(order.order_destination_lat, order.order_destination_lon)
                     order.created_at = (start_time + timedelta(minutes=env.now)).isoformat()
                     self.order_search_driver.append(order)
                     self.total_order += 1
@@ -126,3 +128,19 @@ class OrderSystem:
         except Exception as e:
             print(f"Gagal koneksi ke OSRM: {e}")
             return None, None
+
+    def snap_to_road(self, lat, lon):
+        try:
+            url = f"{OSRM_URL}/nearest/v1/driving/{lon},{lat}"
+            response = requests.get(url)
+            data = response.json()
+
+            if data.get("code") == "Ok" and data.get("waypoints"):
+                snapped = data["waypoints"][0]["location"]  # [lon, lat]
+                return snapped[1], snapped[0]  # return lat, lon
+            else:
+                print(f"[WARNING] Gagal snap ke jalan untuk ({lat},{lon}): {data}")
+                return lat, lon  # fallback tetap titik lama
+        except Exception as e:
+            print(f"[ERROR] Snap to road gagal: {e}")
+            return lat, lon

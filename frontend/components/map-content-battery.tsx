@@ -188,6 +188,7 @@ export default function MapContentBattery({
           <p>Available Batteries: ${available_batteries}</p>
           <p>Charging: ${station.charging_batteries || 0}</p>
           <p>Total Slots: ${total_slots}</p>
+          <p>Alamat: ${station.alamat}</p>
           <p>Location: ${lat.toFixed(6)}, ${lon.toFixed(6)}</p>
         </div>
       `;

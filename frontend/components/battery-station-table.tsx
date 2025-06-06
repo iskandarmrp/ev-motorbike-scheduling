@@ -61,6 +61,7 @@ export function BatteryStationTable({
             <TableRow>
               <TableHead>Station ID</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Alamat</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Total Slots</TableHead>
               <TableHead>Batteries</TableHead>
@@ -90,6 +91,9 @@ export function BatteryStationTable({
                   <TableRow key={station.id}>
                     <TableCell className="font-medium">{station.id}</TableCell>
                     <TableCell>{station.name}</TableCell>
+                    <TableCell className="max-w-[200px] whitespace-normal break-words">
+                      {station.alamat}
+                    </TableCell>
                     <TableCell>
                       {station.lat.toFixed(6)}, {station.lon.toFixed(6)}
                     </TableCell>

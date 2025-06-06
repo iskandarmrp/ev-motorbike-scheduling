@@ -60,6 +60,7 @@ export interface BatteryStation {
   total_slots: number;
   lat: number;
   lon: number;
+  alamat: string;
   slots: Battery[];
   available_batteries: number;
   charging_batteries: number;
@@ -116,6 +117,7 @@ const mockBatteryStations: Record<string, BatteryStation> = {
     total_slots: 3,
     lat: -6.2088,
     lon: 106.8456,
+    alamat: "Jl. Tamansari",
     slots: [
       {
         id: "1",
@@ -309,6 +311,7 @@ export function DashboardBatterySwap() {
         total_slots: safeNumber(s.total_slots),
         lat: safeNumber(s.latitude),
         lon: safeNumber(s.longitude),
+        alamat: safeString(s.alamat),
         slots: battery_list,
         available_batteries: safeNumber(available_batteries),
         charging_batteries: safeNumber(charging_batteries),

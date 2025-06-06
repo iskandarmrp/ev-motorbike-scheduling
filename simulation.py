@@ -1,5 +1,6 @@
 import simpy
 import osmnx as ox
+import pandas as pd
 import random
 import time
 from datetime import datetime, timedelta
@@ -15,7 +16,8 @@ from simulation_utils import (
     convert_fleet_ev_motorbikes_to_dict,
     convert_station_to_list,
     apply_schedule_to_ev_fleet,
-    add_and_save_swap_schedule
+    add_and_save_swap_schedule,
+    snap_to_road
 )
 from algorithm.algorithm import simulated_annealing
 
@@ -36,11 +38,10 @@ status_data = {
 }
 
 class Simulation:
-    def __init__(self, jumlah_ev_motorbike, jumlah_battery_swap_station):
+    def __init__(self, jumlah_ev_motorbike, csv_path):
         self.env = simpy.Environment() # Inisialisasi ENV
         self.start_time = datetime.now(ZoneInfo("Asia/Jakarta"))
         self.jumlah_ev_motorbike = jumlah_ev_motorbike
-        self.jumlah_battery_swap_station = jumlah_battery_swap_station
         self.fleet_ev_motorbikes = {}
         self.battery_swap_station = {}
         self.order_system = OrderSystem(self.env)
@@ -50,22 +51,30 @@ class Simulation:
         self.swap_schedule_counter = [0]
         self.swap_schedules = {}
 
+        df = pd.read_csv(csv_path)
+        self.jumlah_battery_swap_station = len(df)
+        self.setup_battery_swap_station(df)
+
+
     def setup_fleet_ev_motorbike(self):
         for i in range(self.jumlah_ev_motorbike):
             ev = ev_generator(i, self.battery_swap_station, self.order_system, self.battery_registry, self.battery_counter, self.start_time, self.env.now)
 
             self.fleet_ev_motorbikes[i] = ev
 
-    def setup_battery_swap_station(self):
-        for i in range(self.jumlah_battery_swap_station):
-            lat = round(random.uniform(-6.4, -6.125), 6)
-            lon = round(random.uniform(106.7, 107.0), 6)
+    def setup_battery_swap_station(self, df):
+        for i, row in df.iterrows():
+            lat = row["Latitude"]
+            lon = row["Longitude"]
+            lat, lon = snap_to_road(lat, lon)
             station = BatterySwapStation(
                 env=self.env,
                 id=i,
-                name=f"Station_{i}",
+                name=row["Nama SGB"],
                 lat=lat,
                 lon=lon,
+                alamat=row["Alamat"],
+                total_slots=row["Jumlah Slot"],
                 battery_registry=self.battery_registry,
                 battery_counter=self.battery_counter
             )
@@ -184,7 +193,6 @@ class Simulation:
         self.env.process(self.order_system.search_driver(self.env, self.fleet_ev_motorbikes, self.battery_swap_station, self.start_time))
 
     def run(self):
-        self.setup_battery_swap_station()
         self.setup_fleet_ev_motorbike()
         
 
@@ -229,6 +237,7 @@ class Simulation:
                     "total_slots": battery_swap_station.total_slots,
                     "latitude": battery_swap_station.lat,
                     "longitude": battery_swap_station.lon,
+                    "alamat": battery_swap_station.alamat,
                     "slots": [battery.id for battery in battery_swap_station.slots],
                 }
                 for battery_swap_station in self.battery_swap_station.values()
@@ -335,7 +344,7 @@ class Simulation:
 if __name__ == '__main__':    
     sim = Simulation(
         jumlah_ev_motorbike= 100,
-        jumlah_battery_swap_station= 10
+        csv_path="scraping/data/sgb_jakarta_completed.csv"
     )
     sim.run()
 

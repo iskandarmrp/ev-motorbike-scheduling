@@ -27,6 +27,23 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
     except Exception as e:
         print(f"Gagal koneksi ke OSRM: {e}")
         return None, None
+    
+def snap_to_road(lat, lon):
+    try:
+        url = f"{OSRM_URL}/nearest/v1/driving/{lon},{lat}"
+        response = requests.get(url)
+        data = response.json()
+
+        if data.get("code") == "Ok" and data.get("waypoints"):
+            snapped = data["waypoints"][0]["location"]  # [lon, lat]
+            return snapped[1], snapped[0]  # return lat, lon
+        else:
+            print(f"[WARNING] Gagal snap ke jalan untuk ({lat},{lon}): {data}")
+            return lat, lon  # fallback tetap titik lama
+    except Exception as e:
+        print(f"[ERROR] Snap to road gagal: {e}")
+        return lat, lon
+
 
 def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, battery_counter, start_time, env_now):
     max_speed = 60  # km/h
@@ -36,6 +53,7 @@ def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, ba
     battery_cycle = random.randint(50, 800)  # siklus acak
     lat = round(random.uniform(-6.4, -6.125), 6)
     lon = round(random.uniform(106.7, 107.0), 6)
+    lat, lon = snap_to_road(lat, lon)
 
     ev = EVMotorBike(
         id=ev_id,
@@ -53,8 +71,10 @@ def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, ba
     if random.random() < 0.3:  # 30% kemungkinan punya order
         order_origin_lat = round(min(lat + random.uniform(-0.02, 0.02), -6.125), 6) # ~ 2 km
         order_origin_lon = round(lon + random.uniform(-0.02, 0.02), 6)
+        order_origin_lat, order_origin_lon = snap_to_road(order_origin_lat, order_origin_lon)
         order_destination_lat = round(min(order_origin_lat + random.uniform(-0.1, 0.1), -6.125), 6) # ~ 5 km
         order_destination_lon = round(order_origin_lon + random.uniform(-0.1, 0.1), 6)
+        order_destination_lat, order_destination_lon = snap_to_road(order_destination_lat, order_destination_lon)
 
         nearest_energy_distance_to_bss = float('inf')
 

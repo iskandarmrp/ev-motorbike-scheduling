@@ -3,21 +3,20 @@ import copy
 from .Battery import Battery
 
 class BatterySwapStation:
-    def __init__(self, env, id, name, lat, lon, battery_registry, battery_counter):
+    def __init__(self, env, id, name, lat, lon, alamat, total_slots, battery_registry, battery_counter):
         self.env = env
         self.id = id
         self.name = name
-        self.total_slots = 0
+        self.alamat = alamat
+        self.total_slots = int(total_slots)
         self.lat = lat
         self.lon = lon
         self.slots = []
 
-        self.generate_random_batteries(battery_registry, battery_counter)
-        self.total_slots = len(self.slots)
+        self.generate_random_batteries(battery_registry, battery_counter, self.total_slots)
 
-    def generate_random_batteries(self, battery_registry, battery_counter):
-        jumlah_baterai = random.randint(5, 10) # Jumlah slot diisi
-        for _ in range(jumlah_baterai):
+    def generate_random_batteries(self, battery_registry, battery_counter, total_slots):
+        for _ in range(total_slots):
             capacity = 100
             battery_now = random.randint(int(0.7 * capacity), capacity)  # minimal 70%
             cycle = random.randint(50, 800)  # siklus acak
