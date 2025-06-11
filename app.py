@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from threading import Thread
 import asyncio
 import json
+import httpx
 
 from simulation import Simulation, status_data
 
@@ -37,6 +38,9 @@ def startup_event():
     # Start broadcaster WebSocket (di thread asyncio terpisah)
     loop = asyncio.get_event_loop()
     loop.create_task(broadcast_status_periodically())
+    loop.create_task(sync_fleet_motorbikes_periodically())
+    loop.create_task(sync_battery_swap_stations_periodically())
+    loop.create_task(sync_batteries_periodically())
 
 # WebSocket endpoint untuk kirim data ke frontend
 @app.websocket("/ws/status")
@@ -79,3 +83,66 @@ async def broadcast_status_periodically():
         connected_clients.difference_update(disconnected)
 
         await asyncio.sleep(1)  # interval push data
+
+# Fungsi sinkronisasi fleet ke backend
+async def sync_fleet_motorbikes():
+    url = "http://localhost:8000/pengemudi-dan-kendaraan/bulk"
+    data = status_data.get("fleet_ev_motorbikes", [])
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=data, timeout=10.0)
+            response.raise_for_status()
+            print("[SYNC] fleet_ev_motorbikes synced:", response.json())
+        except Exception as e:
+            print("[SYNC ERROR] fleet_ev_motorbikes:", str(e))
+
+async def sync_fleet_motorbikes_periodically():
+    while True:
+        try:
+            await sync_fleet_motorbikes()
+        except Exception as e:
+            print("[SYNC ERROR] Gagal sync:", str(e))
+        await asyncio.sleep(2)
+
+# Fungsi sinkronisasi bss ke backend
+async def sync_battery_swap_stations():
+    url = "http://localhost:8000/stasiun-penukaran-baterai/bulk"
+    data = status_data.get("battery_swap_station", [])
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=data, timeout=10.0)
+            response.raise_for_status()
+            print("[SYNC] battery_swap_station synced:", response.json())
+        except Exception as e:
+            print("[SYNC ERROR] battery_swap_station:", str(e))
+
+async def sync_battery_swap_stations_periodically():
+    while True:
+        try:
+            await sync_battery_swap_stations()
+        except Exception as e:
+            print("[SYNC ERROR] Gagal sync:", str(e))
+        await asyncio.sleep(2)
+
+# Fungsi sinkronisasi batteries ke backend
+async def sync_batteries():
+    url = "http://localhost:8000/baterai/bulk"
+    data = status_data.get("batteries", [])
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=data, timeout=10.0)
+            response.raise_for_status()
+            print("[SYNC] batteries synced:", response.json())
+        except Exception as e:
+            print("[SYNC ERROR] batteries:", str(e))
+
+async def sync_batteries_periodically():
+    while True:
+        try:
+            await sync_batteries()
+        except Exception as e:
+            print("[SYNC ERROR] Gagal sync:", str(e))
+        await asyncio.sleep(2)

@@ -124,10 +124,10 @@ class OrderSystem:
                 return distance_km, duration_min
             else:
                 print(f"Gagal mendapatkan rute dari OSRM: {data['code']}")
-                return None, None
+                return 9999, 9999
         except Exception as e:
             print(f"Gagal koneksi ke OSRM: {e}")
-            return None, None
+            return 9999, 9999
 
     def snap_to_road(self, lat, lon):
         try:

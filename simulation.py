@@ -225,11 +225,23 @@ class Simulation:
                     "longitude": motorbike.current_lon,
                     "status": motorbike.status,
                     "online_status": motorbike.online_status,
-                    "order_id": motorbike.order_schedule.get("order_id") if motorbike.order_schedule else None,
-                    "swap_schedule": motorbike.swap_schedule,
                 }
                 for motorbike in self.fleet_ev_motorbikes.values()
             ]
+            # status_data["fleet_ev_motorbikes"] = [
+            #     {
+            #         "id": motorbike.id,
+            #         "max_speed": motorbike.max_speed,
+            #         "battery_id": motorbike.battery.id,
+            #         "latitude": motorbike.current_lat,
+            #         "longitude": motorbike.current_lon,
+            #         "status": motorbike.status,
+            #         "online_status": motorbike.online_status,
+            #         "order_id": motorbike.order_schedule.get("order_id") if motorbike.order_schedule else None,
+            #         "swap_schedule": motorbike.swap_schedule,
+            #     }
+            #     for motorbike in self.fleet_ev_motorbikes.values()
+            # ]
             status_data["battery_swap_station"] = [
                 {
                     "id": battery_swap_station.id,
@@ -249,11 +261,21 @@ class Simulation:
                     "battery_now": battery.battery_now,
                     "battery_total_charged": battery.battery_total_charged,
                     "cycle": battery.cycle,
-                    "location": battery.location,
-                    "location_id": battery.location_id
                 }
                 for battery in self.battery_registry.values()
             ]
+            # status_data["batteries"] = [
+            #     {
+            #         "id": battery.id,
+            #         "capacity": battery.capacity,
+            #         "battery_now": battery.battery_now,
+            #         "battery_total_charged": battery.battery_total_charged,
+            #         "cycle": battery.cycle,
+            #         "location": battery.location,
+            #         "location_id": battery.location_id
+            #     }
+            #     for battery in self.battery_registry.values()
+            # ]
             status_data["total_order"] = self.order_system.total_order
             status_data["order_search_driver"] = [
                 {

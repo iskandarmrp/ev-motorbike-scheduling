@@ -1,6 +1,7 @@
 import requests
 import random
 import polyline
+import requests
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from object.EVMotorBike import EVMotorBike
@@ -23,10 +24,10 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
             return distance_km, duration_min
         else:
             print(f"Gagal mendapatkan rute dari OSRM: {data['code']}")
-            return None, None
+            return 9999, 9999
     except Exception as e:
         print(f"Gagal koneksi ke OSRM: {e}")
-        return None, None
+        return 9999, 9999
     
 def snap_to_road(lat, lon):
     try:
@@ -133,14 +134,14 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                         ev.current_lat, ev.current_lon,
                         station.lat, station.lon
                     )
-                    if distance is not None and duration is not None:
-                        energy = round(distance * (100 / 60), 2)
-                    else:
-                        # Bisa pakai nilai dummy besar (jika ingin sistem tetap berjalan)
-                        energy = 99999
-                        duration = 99999
-                        print(f"[WARNING] distance/duration None untuk EV {ev.id} ke Station {station.id}")
-                    # energy = round((distance * (100 / 60)), 2)
+                    # if distance is not None and duration is not None:
+                    #     energy = round(distance * (100 / 60), 2)
+                    # else:
+                    #     # Bisa pakai nilai dummy besar (jika ingin sistem tetap berjalan)
+                    #     energy = 99999
+                    #     duration = 99999
+                    #     print(f"[WARNING] distance/duration None untuk EV {ev.id} ke Station {station.id}")
+                    energy = round((distance * (100 / 60)), 2)
                     ev.energy_distance.append(energy)
                     ev.travel_time.append(duration)
             elif ev.status == 'heading to order':
@@ -254,8 +255,6 @@ def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter, 
                     'status': data['status'],
                     'scheduled_time': data['scheduled_time'],
                 }
-                
-                print('scheduled 2:', data['scheduled_time'])
 
             updated_swap_ids.add(swap_id)
     
@@ -271,3 +270,26 @@ def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):
                 ev.swap_schedule = solution[ev_id]
             else:
                 ev.swap_schedule = {}
+
+def sync_swap_schedule_to_api():
+    data = []
+    for entry in status_data["swap_schedules"]:
+        data.append({
+            "id_pengemudi": entry["ev_id"],
+            "id_slot_stasiun_penukaran_baterai": entry["battery_station"],
+            "nomor_slot": entry["slot"],
+            "waktu_penukaran": entry["scheduled_time"],
+            "estimasi_waktu_tunggu": entry["waiting_time"],
+            "estimasi_waktu_tempuh": entry["travel_time"],
+            "estimasi_baterai_tempuh": entry["energy_distance"],
+            "perkiraan_kapasitas_baterai_yang_ditukar": entry["exchanged_battery"],
+            "perkiraan_kapasitas_baterai_yang_didapat": entry["received_battery"],
+            "perkiraan_siklus_baterai_yang_didapat": entry["received_battery_cycle"],
+            "status": entry["status"]
+        })
+
+    try:
+        response = requests.post("http://localhost:8000/jadwal/all", json=data)
+        print("[sync] response:", response.status_code, response.json())
+    except Exception as e:
+        print("[sync] gagal:", str(e))
