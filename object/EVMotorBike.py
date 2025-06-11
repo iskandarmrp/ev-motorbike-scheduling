@@ -92,7 +92,6 @@ class EVMotorBike:
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
-                                self.swap_schedule["battery_now"] = self.battery.battery_now
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - (energy_per_minute * last_minutes))
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - last_minutes)
 
@@ -106,7 +105,6 @@ class EVMotorBike:
                             yield env.timeout(1)
 
                             if self.swap_schedule:
-                                self.swap_schedule["battery_now"] = self.battery.battery_now
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'on order':
@@ -142,7 +140,6 @@ class EVMotorBike:
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
-                                self.swap_schedule["battery_now"] = self.battery.battery_now
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - (energy_per_minute * last_minutes))
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - last_minutes)
                                 self.status = 'heading to bss'
@@ -168,7 +165,6 @@ class EVMotorBike:
                             yield env.timeout(1)
 
                             if self.swap_schedule:
-                                self.swap_schedule["battery_now"] = self.battery.battery_now
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'heading to bss':
@@ -205,7 +201,6 @@ class EVMotorBike:
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
-                                self.swap_schedule["battery_now"] = self.battery.battery_now
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - (energy_per_minute * last_minutes))
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - last_minutes)
 
@@ -219,7 +214,6 @@ class EVMotorBike:
                             yield env.timeout(1)
 
                             if self.swap_schedule:
-                                self.swap_schedule["battery_now"] = self.battery.battery_now
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'battery swap':

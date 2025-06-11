@@ -60,7 +60,7 @@ class SlotStasiunPenukaranBaterai(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     id_stasiun_penukaran_baterai = Column(Integer, ForeignKey("stasiun_penukaran_baterai.id"))
     id_baterai = Column(Integer)
-    slot_number = Column(Integer)
+    nomor_slot = Column(Integer)
 
     stasiun = relationship("StasiunPenukaranBaterai", back_populates="slots")
 
@@ -68,7 +68,8 @@ class JadwalPenukaran(Base):
     __tablename__ = "jadwal_penukaran"
     id = Column(Integer, primary_key=True)
     id_pengemudi = Column(Integer, ForeignKey("pengemudi.id"))
-    id_slot_stasiun_penukaran_baterai = Column(Integer, ForeignKey("slot_stasiun_penukaran_baterai.id"))
+    id_slot_stasiun_penukaran_baterai = Column(Integer, ForeignKey("stasiun_penukaran_baterai.id"))
+    nomor_slot = Column(Integer)
     waktu_penukaran = Column(DateTime)
     estimasi_waktu_tunggu = Column(Float)
     estimasi_waktu_tempuh = Column(Float)

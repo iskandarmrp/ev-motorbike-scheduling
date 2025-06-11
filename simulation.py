@@ -320,8 +320,6 @@ class Simulation:
                 {
                     "id": swap_id,
                     'ev_id': schedule['ev_id'],
-                    'battery_now': schedule['battery_now'],
-                    'battery_cycle': schedule['battery_cycle'],
                     'battery_station': schedule['battery_station'],
                     'slot': schedule['slot'],
                     'energy_distance': schedule['energy_distance'],

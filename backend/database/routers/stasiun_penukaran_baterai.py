@@ -41,7 +41,7 @@ def insert_station(data: list[dict], db: Session = Depends(get_db)):
             db.flush()
 
         # Mapping slot_number → slot
-        slot_dict = {slot.slot_number: slot for slot in stasiun.slots}
+        slot_dict = {slot.nomor_slot: slot for slot in stasiun.slots}
 
         for i, battery_id in enumerate(entry["slots"], start=1):
             if i in slot_dict:
@@ -51,7 +51,7 @@ def insert_station(data: list[dict], db: Session = Depends(get_db)):
                 # INSERT slot baru
                 new_slot = models.SlotStasiunPenukaranBaterai(
                     id_stasiun_penukaran_baterai=stasiun.id,
-                    slot_number=i,
+                    nomor_slot=i,
                     id_baterai=battery_id
                 )
                 db.add(new_slot)

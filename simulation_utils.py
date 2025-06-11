@@ -133,7 +133,14 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                         ev.current_lat, ev.current_lon,
                         station.lat, station.lon
                     )
-                    energy = round((distance * (100 / 60)), 2)
+                    if distance is not None and duration is not None:
+                        energy = round(distance * (100 / 60), 2)
+                    else:
+                        # Bisa pakai nilai dummy besar (jika ingin sistem tetap berjalan)
+                        energy = 99999
+                        duration = 99999
+                        print(f"[WARNING] distance/duration None untuk EV {ev.id} ke Station {station.id}")
+                    # energy = round((distance * (100 / 60)), 2)
                     ev.energy_distance.append(energy)
                     ev.travel_time.append(duration)
             elif ev.status == 'heading to order':
@@ -177,12 +184,20 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
 def convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes):
     ev_dict = {}
     for ev_id, ev in fleet_ev_motorbikes.items():
+        swap_schedule_copy = {}
+
+        if ev.swap_schedule:
+            # Salin dan tambahkan info baterai
+            swap_schedule_copy = dict(ev.swap_schedule)
+            swap_schedule_copy['battery_now'] = ev.battery.battery_now
+            swap_schedule_copy['battery_cycle'] = ev.battery.cycle
+
         ev_dict[ev_id] = {
             "battery_now": ev.battery.battery_now,
             "battery_cycle": ev.battery.cycle,
             "energy_distance": ev.energy_distance,
             "travel_time": ev.travel_time,
-            "swap_schedule": ev.swap_schedule
+            "swap_schedule": swap_schedule_copy
         }
     return ev_dict
 
@@ -210,8 +225,6 @@ def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter, 
                 # Simpan ke dalam swap_schedules
                 swap_schedules[data['swap_id']] = {
                     'ev_id': ev_id,
-                    'battery_now': data['battery_now'],
-                    'battery_cycle': data['battery_cycle'],
                     'battery_station': data['battery_station'],
                     'slot': data['slot'],
                     'energy_distance': data['energy_distance'],
@@ -230,8 +243,6 @@ def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter, 
                 # Simpan ke dalam swap_schedules
                 swap_schedules[data['swap_id']] = {
                     'ev_id': ev_id,
-                    'battery_now': data['battery_now'],
-                    'battery_cycle': data['battery_cycle'],
                     'battery_station': data['battery_station'],
                     'slot': data['slot'],
                     'energy_distance': data['energy_distance'],
