@@ -41,6 +41,8 @@ def startup_event():
     loop.create_task(sync_fleet_motorbikes_periodically())
     loop.create_task(sync_battery_swap_stations_periodically())
     loop.create_task(sync_batteries_periodically())
+    loop.create_task(sync_orders_periodically())
+    loop.create_task(sync_swap_schedules_periodically())
 
 # WebSocket endpoint untuk kirim data ke frontend
 @app.websocket("/ws/status")
@@ -143,6 +145,48 @@ async def sync_batteries_periodically():
     while True:
         try:
             await sync_batteries()
+        except Exception as e:
+            print("[SYNC ERROR] Gagal sync:", str(e))
+        await asyncio.sleep(2)
+
+# Fungsi sinkronisasi orders ke backend
+async def sync_orders():
+    url = "http://localhost:8000/order/bulk"
+    data = status_data.get("orders", [])
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=data, timeout=10.0)
+            response.raise_for_status()
+            print("[SYNC] orders synced:", response.json())
+        except Exception as e:
+            print("[SYNC ERROR] orders:", str(e))
+
+async def sync_orders_periodically():
+    while True:
+        try:
+            await sync_orders()
+        except Exception as e:
+            print("[SYNC ERROR] Gagal sync:", str(e))
+        await asyncio.sleep(2)
+
+# Fungsi sinkronisasi jadwal ke backend
+async def sync_swap_schedules():
+    url = "http://localhost:8000/jadwal/bulk"
+    data = status_data.get("swap_schedules", [])
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=data, timeout=10.0)
+            response.raise_for_status()
+            print("[SYNC] swap_schedules synced:", response.json())
+        except Exception as e:
+            print("[SYNC ERROR] swap_schedules:", str(e))
+
+async def sync_swap_schedules_periodically():
+    while True:
+        try:
+            await sync_swap_schedules()
         except Exception as e:
             print("[SYNC ERROR] Gagal sync:", str(e))
         await asyncio.sleep(2)

@@ -29,6 +29,7 @@ status_data = {
     "battery_swap_station": [],
     "batteries": [],
     "total_order": None,
+    "orders": [],
     "order_search_driver": [],
     "order_active": [],
     "order_done": [],
@@ -277,7 +278,15 @@ class Simulation:
             #     for battery in self.battery_registry.values()
             # ]
             status_data["total_order"] = self.order_system.total_order
-            status_data["order_search_driver"] = [
+
+            all_orders = (
+                self.order_system.order_search_driver +
+                self.order_system.order_active +
+                self.order_system.order_done +
+                self.order_system.order_failed
+            )
+
+            status_data["orders"] = [
                 {
                     "id": order.id,
                     "status": order.status,
@@ -290,53 +299,68 @@ class Simulation:
                     "created_at": order.created_at,
                     "completed_at": order.completed_at,
                 }
-                for i, order in enumerate(self.order_system.order_search_driver)
+                for order in all_orders
             ]
-            status_data["order_active"] = [
-                {
-                    "id": order.id,
-                    "status": order.status,
-                    "searching_time": order.searching_time,
-                    "assigned_motorbike_id": order.assigned_motorbike_id,
-                    "order_origin_lat": order.order_origin_lat,
-                    "order_origin_lon": order.order_origin_lon,
-                    "order_destination_lat": order.order_destination_lat,
-                    "order_destination_lon": order.order_destination_lon,
-                    "created_at": order.created_at,
-                    "completed_at": order.completed_at,
-                }
-                for i, order in enumerate(self.order_system.order_active)
-            ]
-            status_data["order_done"] = [
-                {
-                    "id": order.id,
-                    "status": order.status,
-                    "searching_time": order.searching_time,
-                    "assigned_motorbike_id": order.assigned_motorbike_id,
-                    "order_origin_lat": order.order_origin_lat,
-                    "order_origin_lon": order.order_origin_lon,
-                    "order_destination_lat": order.order_destination_lat,
-                    "order_destination_lon": order.order_destination_lon,
-                    "created_at": order.created_at,
-                    "completed_at": order.completed_at,
-                }
-                for i, order in enumerate(self.order_system.order_done)
-            ]
-            status_data["order_failed"] = [
-                {
-                    "id": order.id,
-                    "status": order.status,
-                    "searching_time": order.searching_time,
-                    "assigned_motorbike_id": order.assigned_motorbike_id,
-                    "order_origin_lat": order.order_origin_lat,
-                    "order_origin_lon": order.order_origin_lon,
-                    "order_destination_lat": order.order_destination_lat,
-                    "order_destination_lon": order.order_destination_lon,
-                    "created_at": order.created_at,
-                    "completed_at": order.completed_at,
-                }
-                for i, order in enumerate(self.order_system.order_failed)
-            ]
+            # status_data["order_search_driver"] = [
+            #     {
+            #         "id": order.id,
+            #         "status": order.status,
+            #         "searching_time": order.searching_time,
+            #         "assigned_motorbike_id": order.assigned_motorbike_id,
+            #         "order_origin_lat": order.order_origin_lat,
+            #         "order_origin_lon": order.order_origin_lon,
+            #         "order_destination_lat": order.order_destination_lat,
+            #         "order_destination_lon": order.order_destination_lon,
+            #         "created_at": order.created_at,
+            #         "completed_at": order.completed_at,
+            #     }
+            #     for i, order in enumerate(self.order_system.order_search_driver)
+            # ]
+            # status_data["order_active"] = [
+            #     {
+            #         "id": order.id,
+            #         "status": order.status,
+            #         "searching_time": order.searching_time,
+            #         "assigned_motorbike_id": order.assigned_motorbike_id,
+            #         "order_origin_lat": order.order_origin_lat,
+            #         "order_origin_lon": order.order_origin_lon,
+            #         "order_destination_lat": order.order_destination_lat,
+            #         "order_destination_lon": order.order_destination_lon,
+            #         "created_at": order.created_at,
+            #         "completed_at": order.completed_at,
+            #     }
+            #     for i, order in enumerate(self.order_system.order_active)
+            # ]
+            # status_data["order_done"] = [
+            #     {
+            #         "id": order.id,
+            #         "status": order.status,
+            #         "searching_time": order.searching_time,
+            #         "assigned_motorbike_id": order.assigned_motorbike_id,
+            #         "order_origin_lat": order.order_origin_lat,
+            #         "order_origin_lon": order.order_origin_lon,
+            #         "order_destination_lat": order.order_destination_lat,
+            #         "order_destination_lon": order.order_destination_lon,
+            #         "created_at": order.created_at,
+            #         "completed_at": order.completed_at,
+            #     }
+            #     for i, order in enumerate(self.order_system.order_done)
+            # ]
+            # status_data["order_failed"] = [
+            #     {
+            #         "id": order.id,
+            #         "status": order.status,
+            #         "searching_time": order.searching_time,
+            #         "assigned_motorbike_id": order.assigned_motorbike_id,
+            #         "order_origin_lat": order.order_origin_lat,
+            #         "order_origin_lon": order.order_origin_lon,
+            #         "order_destination_lat": order.order_destination_lat,
+            #         "order_destination_lon": order.order_destination_lon,
+            #         "created_at": order.created_at,
+            #         "completed_at": order.completed_at,
+            #     }
+            #     for i, order in enumerate(self.order_system.order_failed)
+            # ]
             status_data["time_now"] = (self.start_time + timedelta(minutes=self.env.now)).isoformat()
             status_data["swap_schedules"] = [
                 {

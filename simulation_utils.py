@@ -270,26 +270,3 @@ def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):
                 ev.swap_schedule = solution[ev_id]
             else:
                 ev.swap_schedule = {}
-
-def sync_swap_schedule_to_api():
-    data = []
-    for entry in status_data["swap_schedules"]:
-        data.append({
-            "id_pengemudi": entry["ev_id"],
-            "id_slot_stasiun_penukaran_baterai": entry["battery_station"],
-            "nomor_slot": entry["slot"],
-            "waktu_penukaran": entry["scheduled_time"],
-            "estimasi_waktu_tunggu": entry["waiting_time"],
-            "estimasi_waktu_tempuh": entry["travel_time"],
-            "estimasi_baterai_tempuh": entry["energy_distance"],
-            "perkiraan_kapasitas_baterai_yang_ditukar": entry["exchanged_battery"],
-            "perkiraan_kapasitas_baterai_yang_didapat": entry["received_battery"],
-            "perkiraan_siklus_baterai_yang_didapat": entry["received_battery_cycle"],
-            "status": entry["status"]
-        })
-
-    try:
-        response = requests.post("http://localhost:8000/jadwal/all", json=data)
-        print("[sync] response:", response.status_code, response.json())
-    except Exception as e:
-        print("[sync] gagal:", str(e))
