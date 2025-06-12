@@ -122,93 +122,59 @@ def ev_generator(ev_id, battery_swap_station, order_system, battery_registry, ba
     
     return ev
 
-def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station):
-    for ev in fleet_ev_motorbikes.values():
-        ev.energy_distance = []
-        ev.travel_time = []
-
-        if not ev.swap_schedule:
-            if ev.status == 'idle':
-                for station in battery_swap_station.values():
-                    distance, duration = get_distance_and_duration(
-                        ev.current_lat, ev.current_lon,
-                        station.lat, station.lon
-                    )
-                    # if distance is not None and duration is not None:
-                    #     energy = round(distance * (100 / 60), 2)
-                    # else:
-                    #     # Bisa pakai nilai dummy besar (jika ingin sistem tetap berjalan)
-                    #     energy = 99999
-                    #     duration = 99999
-                    #     print(f"[WARNING] distance/duration None untuk EV {ev.id} ke Station {station.id}")
-                    energy = round((distance * (100 / 60)), 2)
-                    ev.energy_distance.append(energy)
-                    ev.travel_time.append(duration)
-            elif ev.status == 'heading to order':
-                for station in battery_swap_station.values():
-                    distance_to_order, duration_to_order = get_distance_and_duration(
-                        ev.current_lat, ev.current_lon,
-                        ev.order_schedule.get("order_origin_lat"), ev.order_schedule.get("order_origin_lon")
-                    )
-                    energy_to_order = round((distance_to_order * (100 / 60)), 2)
-                    distance_order, duration_order = get_distance_and_duration(
-                        ev.order_schedule.get("order_origin_lat"), ev.order_schedule.get("order_origin_lon"),
-                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon")
-                    )
-                    energy_order = round((distance_order * (100 / 60)), 2)
-                    distance_to_bss, duration_to_bss = get_distance_and_duration(
-                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon"),
-                        station.lat, station.lon
-                    )
-                    energy_to_bss = round((distance_to_bss * (100 / 60)), 2)
-                    energy = energy_to_order + energy_order + energy_to_bss
-                    duration = duration_to_order + duration_order + duration_to_bss
-                    ev.energy_distance.append(energy)
-                    ev.travel_time.append(duration)
-            elif ev.status == 'on order':
-                for station in battery_swap_station.values():
-                    distance_order, duration_order = get_distance_and_duration(
-                        ev.current_lat, ev.current_lon,
-                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon")
-                    )
-                    energy_order = round((distance_order * (100 / 60)), 2)
-                    distance_to_bss, duration_to_bss = get_distance_and_duration(
-                        ev.order_schedule.get("order_destination_lat"), ev.order_schedule.get("order_destination_lon"),
-                        station.lat, station.lon
-                    )
-                    energy_to_bss = round((distance_to_bss * (100 / 60)), 2)
-                    energy = energy_order + energy_to_bss
-                    duration = duration_order + duration_to_bss
-                    ev.energy_distance.append(energy)
-                    ev.travel_time.append(duration)
-
-def convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes):
-    ev_dict = {}
+def convert_ev_fleet_to_dict(fleet_ev_motorbikes):
+    result = {}
     for ev_id, ev in fleet_ev_motorbikes.items():
-        swap_schedule_copy = {}
-
-        if ev.swap_schedule:
-            # Salin dan tambahkan info baterai
-            swap_schedule_copy = dict(ev.swap_schedule)
-            swap_schedule_copy['battery_now'] = ev.battery.battery_now
-            swap_schedule_copy['battery_cycle'] = ev.battery.cycle
-
-        ev_dict[ev_id] = {
-            "battery_now": ev.battery.battery_now,
-            "battery_cycle": ev.battery.cycle,
+        result[ev_id] = {
+            "id": ev.id,
+            "max_speed": ev.max_speed,
+            "current_lat": ev.current_lat,
+            "current_lon": ev.current_lon,
+            "status": ev.status,
+            "online_status": ev.online_status,
+            "order_schedule": ev.order_schedule,
+            "swap_schedule": ev.swap_schedule,
             "energy_distance": ev.energy_distance,
             "travel_time": ev.travel_time,
-            "swap_schedule": swap_schedule_copy
+            "battery_now": ev.battery.battery_now,
+            "battery_cycle": ev.battery.cycle
         }
-    return ev_dict
+    return result
 
-def convert_station_to_list(battery_swap_station):
-    station_list = []
+def convert_station_to_dict(battery_swap_station):
+    station_dict = {}
     for station_id in sorted(battery_swap_station.keys()):
         station = battery_swap_station[station_id]
-        battery_list = [[battery.battery_now, battery.cycle] for battery in station.slots]
-        station_list.append(battery_list)
-    return station_list
+        station_dict[station_id] = {
+            "lat": station.lat,
+            "lon": station.lon,
+            "batteries": [
+                {
+                    "battery_now": battery.battery_now,
+                    "cycle": battery.cycle
+                }
+                for battery in station.slots
+            ]
+        }
+    return station_dict
+
+def send_penjadwalan_request(ev_dict, station_list, url="http://localhost:8000/penjadwalan", timeout=120):
+    print("[SCHEDULING] Mengirim data ke API penjadwalan...")
+    try:
+        response = requests.post(
+            url,
+            json={
+                "fleet_ev_motorbikes": ev_dict,
+                "battery_swap_station": station_list
+            },
+            timeout=timeout
+        )
+        response.raise_for_status()
+        print("[SCHEDULING] Response diterima:", response.json())
+        return response.json()  # Bisa dikembalikan jika ingin digunakan
+    except requests.exceptions.RequestException as e:
+        print("[SCHEDULING ERROR] Gagal kirim data:", e)
+        return None
 
 def add_and_save_swap_schedule(schedule, swap_schedules, swap_schedule_counter, start_time, env_now):
     updated_swap_ids = set()

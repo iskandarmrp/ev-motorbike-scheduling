@@ -97,7 +97,7 @@ class OrderSystem:
                         order.assigned_motorbike_id = nearest_ev.id
                         self.order_search_driver.remove(order)
                         self.order_active.append(order)
-                        print(f"[{env.now}] 🚕 Order {order.id} assigned to EV {ev.id}")
+                        print(f"[{env.now}] 🚕 Order {order.id} assigned to EV {nearest_ev.id}")
                     else:
                         order.searching_time += 1
 

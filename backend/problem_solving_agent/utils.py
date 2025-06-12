@@ -1,0 +1,266 @@
+import copy
+import random
+import requests
+
+OSRM_URL = "http://host.docker.internal:5000"
+
+def queue_update(solution, ev, battery_swap_station, charging_rate, required_battery_threshold=80):
+    slot_timeline = {}
+    station_batteries = copy.deepcopy(battery_swap_station)
+
+    swaps = []
+
+    # 1. Masukkan jadwal tetap (dari ev['swap_schedule']) dulu ke slot_timeline
+    # Kumpulkan semua jadwal tetap dari ev['swap_schedule']
+    temp_queue = {}
+
+    for ev_id, data in ev.items():
+        sched = copy.deepcopy(data.get('swap_schedule'))
+        if sched and sched.get('assigned'):
+            key = (sched['battery_station'], sched['slot'])
+            ready_time = sched['travel_time'] + sched['waiting_time']
+            exchanged_battery = sched['exchanged_battery']
+            exchanged_battery_cycle = sched['battery_cycle']
+
+            if key not in temp_queue:
+                temp_queue[key] = [(ready_time, exchanged_battery, exchanged_battery_cycle)]
+            else:
+                temp_queue[key].append((ready_time, exchanged_battery, exchanged_battery_cycle))
+
+    # Urutkan setiap antrian berdasarkan arrival_time
+    slot_timeline = {
+        key: sorted(entries, key=lambda x: x[0])
+        for key, entries in temp_queue.items()
+    }
+
+    # 2. Kumpulkan EV dari solusi yang assigned, tapi hanya yang tidak punya jadwal tetap
+    for ev_id, sched in solution.items():
+        if sched['assigned'] and not ev[ev_id]['swap_schedule']:
+            arrival_time = sched['travel_time']
+            key = (sched['battery_station'], sched['slot'])
+            swaps.append((arrival_time, ev_id, key))
+
+    # 3. Urutkan berdasarkan arrival_time (yang datang duluan diproses lebih dulu)
+    swaps.sort()
+
+    # 4. Proses masing-masing EV, hitung ulang waiting_time dan received_battery
+    for _, ev_id, key in swaps:
+        sched = solution[ev_id]
+        station_idx, slot_idx = key
+
+        if key not in slot_timeline:
+            last_ready_time = 0
+            last_insert = battery_swap_station[station_idx][slot_idx][0]
+            last_insert_cycle = battery_swap_station[station_idx][slot_idx][1]
+        else:
+            last_ready_time, last_insert, last_insert_cycle = slot_timeline[key][-1]
+
+        arrival_time = sched['travel_time']
+        time_to_80 = max(0, (required_battery_threshold - last_insert) / charging_rate)
+        ready_time = last_ready_time + time_to_80
+        waiting_time = max(0, ready_time - arrival_time)
+
+        exchanged_battery = sched['exchanged_battery']
+        received_battery = min(100, last_insert + (arrival_time + waiting_time - last_ready_time) * charging_rate)
+        exchanged_battery_cycle = sched['battery_cycle']
+        received_battery_cycle = last_insert_cycle + (received_battery - last_insert) / 100
+
+        # Update ke dalam solution
+        solution[ev_id]['waiting_time'] = round(waiting_time, 2)
+        solution[ev_id]['received_battery'] = round(received_battery, 2)
+        solution[ev_id]['received_battery_cycle'] = round(received_battery_cycle, 2)
+
+        # Tambahkan ke slot_timeline untuk update antrian selanjutnya
+        if key not in slot_timeline:
+            slot_timeline[key] = [(arrival_time + waiting_time, exchanged_battery, exchanged_battery_cycle)]
+        else:
+            slot_timeline[key].append((arrival_time + waiting_time, exchanged_battery, exchanged_battery_cycle))
+
+    return solution
+
+def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, charging_rate, threshold=15, required_battery_threshold=80):
+    neighbor = copy.deepcopy(solution)
+
+    # Ambil daftar EV yang assigned di solution tetapi tidak punya swap_schedule tetap di ev
+    movable_ev_ids = [
+        ev_id for ev_id in neighbor
+        if neighbor[ev_id] and neighbor[ev_id].get("assigned") and not ev[ev_id].get("swap_schedule")
+    ]
+
+    if not movable_ev_ids:
+        return neighbor  # Tidak ada yang bisa diubah
+
+    # Pilih satu EV secara acak dari yang bisa diubah
+    ev_id = random.choice(movable_ev_ids)
+    data = ev[ev_id]
+
+    # Cari opsi stasiun-slot valid untuk EV ini
+    valid_options = []
+    for station_idx, (ed, tt) in enumerate(zip(data['energy_distance'], data['travel_time'])):
+        if data['battery_now'] - ed < 0:
+            continue
+        for slot_idx in range(len(battery_swap_station[station_idx])):
+            valid_options.append((station_idx, slot_idx, ed, tt))
+
+    if not valid_options:
+        # Jika tidak ada opsi valid, set jadi unassigned
+        neighbor[ev_id] = {
+            'assigned': False,
+            'swap_id': None,
+            'battery_now': data['battery_now'],
+            'battery_cycle': data['battery_cycle'],
+            'battery_station': None,
+            'slot': None,
+            'energy_distance': None,
+            'travel_time': None,
+            'waiting_time': None,
+            'exchanged_battery': None,
+            'received_battery': None,
+            'received_battery_cycle': None,
+            'status': None,
+            'scheduled_time': None,
+        }
+    else:
+        # Acak salah satu pilihan valid
+        station_idx, slot_idx, energy_dist, travel_time = random.choice(valid_options)
+        exchanged_battery = data['battery_now'] - energy_dist
+        neighbor[ev_id] = {
+            'assigned': True,
+            'swap_id': None,
+            'battery_now': data['battery_now'],
+            'battery_cycle': data['battery_cycle'],
+            'battery_station': station_idx,
+            'slot': slot_idx,
+            'energy_distance': energy_dist,
+            'travel_time': travel_time,
+            'waiting_time': 0,  # akan diupdate
+            'exchanged_battery': exchanged_battery,
+            'received_battery': 0,  # akan diupdate
+            'received_battery_cycle': 0, # akan diupdate
+            'status': 'on going',
+            'scheduled_time': None,
+        }
+
+    # Update ulang nilai waiting_time dan received_battery setelah perubahan
+    neighbor = queue_update(neighbor, ev, battery_swap_station, charging_rate, required_battery_threshold)
+    return neighbor
+
+def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destination_lon):
+    try:
+        url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=false"
+        response = requests.get(url)
+        data = response.json()
+
+        if data["code"] == "Ok":
+            route = data["routes"][0]
+            distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+            
+            duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001) # Dikali 2 karena perkiraan motor lebih cepat 2 kali dibanding sepeda
+
+            return distance_km, duration_min
+        else:
+            print(f"Gagal mendapatkan rute dari OSRM: {data['code']}")
+            return 9999, 9999
+    except Exception as e:
+        print(f"Gagal koneksi ke OSRM: {e}")
+        return 9999, 9999
+
+def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station):
+    for ev in fleet_ev_motorbikes.values():
+        ev["energy_distance"] = []
+        ev["travel_time"] = []
+
+        if not ev.get("swap_schedule"):
+            if ev["status"] == 'idle':
+                for station in battery_swap_station.values():
+                    distance, duration = get_distance_and_duration(
+                        ev["current_lat"], ev["current_lon"],
+                        station["lat"], station["lon"]
+                    )
+                    energy = round((distance * (100 / 60)), 2)
+                    ev["energy_distance"].append(energy)
+                    ev["travel_time"].append(duration)
+
+            elif ev["status"] == 'heading to order':
+                for station in battery_swap_station.values():
+                    distance_to_order, duration_to_order = get_distance_and_duration(
+                        ev["current_lat"], ev["current_lon"],
+                        ev["order_schedule"].get("order_origin_lat"),
+                        ev["order_schedule"].get("order_origin_lon")
+                    )
+                    energy_to_order = round((distance_to_order * (100 / 60)), 2)
+
+                    distance_order, duration_order = get_distance_and_duration(
+                        ev["order_schedule"].get("order_origin_lat"),
+                        ev["order_schedule"].get("order_origin_lon"),
+                        ev["order_schedule"].get("order_destination_lat"),
+                        ev["order_schedule"].get("order_destination_lon")
+                    )
+                    energy_order = round((distance_order * (100 / 60)), 2)
+
+                    distance_to_bss, duration_to_bss = get_distance_and_duration(
+                        ev["order_schedule"].get("order_destination_lat"),
+                        ev["order_schedule"].get("order_destination_lon"),
+                        station["lat"], station["lon"]
+                    )
+                    energy_to_bss = round((distance_to_bss * (100 / 60)), 2)
+
+                    total_energy = energy_to_order + energy_order + energy_to_bss
+                    total_duration = duration_to_order + duration_order + duration_to_bss
+
+                    ev["energy_distance"].append(total_energy)
+                    ev["travel_time"].append(total_duration)
+
+            elif ev["status"] == 'on order':
+                for station in battery_swap_station.values():
+                    distance_order, duration_order = get_distance_and_duration(
+                        ev["current_lat"], ev["current_lon"],
+                        ev["order_schedule"].get("order_destination_lat"),
+                        ev["order_schedule"].get("order_destination_lon")
+                    )
+                    energy_order = round((distance_order * (100 / 60)), 2)
+
+                    distance_to_bss, duration_to_bss = get_distance_and_duration(
+                        ev["order_schedule"].get("order_destination_lat"),
+                        ev["order_schedule"].get("order_destination_lon"),
+                        station["lat"], station["lon"]
+                    )
+                    energy_to_bss = round((distance_to_bss * (100 / 60)), 2)
+
+                    total_energy = energy_order + energy_to_bss
+                    total_duration = duration_order + duration_to_bss
+
+                    ev["energy_distance"].append(total_energy)
+                    ev["travel_time"].append(total_duration)
+
+
+def convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes):
+    ev_dict = {}
+    for ev_id, ev in fleet_ev_motorbikes.items():
+        swap_schedule_copy = {}
+
+        if ev.get("swap_schedule"):
+            # Salin dan tambahkan info baterai
+            swap_schedule_copy = dict(ev["swap_schedule"])
+            swap_schedule_copy['battery_now'] = ev["battery_now"]
+            swap_schedule_copy['battery_cycle'] = ev["battery_cycle"]
+
+        ev_dict[ev_id] = {
+            "battery_now": ev["battery_now"],
+            "battery_cycle": ev["battery_cycle"],
+            "energy_distance": ev.get("energy_distance", []),
+            "travel_time": ev.get("travel_time", []),
+            "swap_schedule": swap_schedule_copy
+        }
+
+    return ev_dict
+
+def convert_station_dict_to_list(station_dict):
+    station_list = []
+    for station_id in sorted(station_dict.keys()):  # agar urutan tetap
+        station = station_dict[station_id]
+        battery_list = [
+            [battery["battery_now"], battery["cycle"]] for battery in station["batteries"]
+        ]
+        station_list.append(battery_list)
+    return station_list

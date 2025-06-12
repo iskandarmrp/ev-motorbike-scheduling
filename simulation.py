@@ -12,12 +12,12 @@ from object.OrderSystem import OrderSystem
 from simulation_utils import (
     get_distance_and_duration,
     ev_generator,
-    update_energy_distance_and_travel_time_all,
-    convert_fleet_ev_motorbikes_to_dict,
-    convert_station_to_list,
     apply_schedule_to_ev_fleet,
     add_and_save_swap_schedule,
-    snap_to_road
+    snap_to_road,
+    convert_ev_fleet_to_dict,
+    convert_station_to_dict,
+    send_penjadwalan_request
 )
 from algorithm.algorithm import simulated_annealing
 
@@ -117,61 +117,54 @@ class Simulation:
             self.last_schedule_event = self.env.event()
             self.order_system.update_schedule_event(self.last_schedule_event)
 
-            update_energy_distance_and_travel_time_all(self.fleet_ev_motorbikes, self.battery_swap_station)
-            ev_dict = convert_fleet_ev_motorbikes_to_dict(self.fleet_ev_motorbikes)
-            station_list = convert_station_to_list(self.battery_swap_station)
-            schedule, score = simulated_annealing(
-                station_list,
-                ev_dict,
-                threshold=15,
-                charging_rate=100/240,
-                initial_temp=100.0,
-                alpha=0.95,
-                T_min=0.001,
-                max_iter=200
-            )
-            print("Schedule:", schedule)
-            print("Score:", score)
-            add_and_save_swap_schedule(schedule, self.swap_schedules, self.swap_schedule_counter, self.start_time, self.env.now)
-            apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
+            ev_dict = convert_ev_fleet_to_dict(self.fleet_ev_motorbikes)
+            station_dict = convert_station_to_dict(self.battery_swap_station)
 
-            # Selesaikan event agar search_driver bisa lanjut
-            self.last_schedule_event.succeed()
-            # print(self.env.now)
+            schedule, score = send_penjadwalan_request(ev_dict, station_dict)
+            print(schedule)
+            print("Skor:", score)
+
+            if schedule:
+                add_and_save_swap_schedule(schedule, self.swap_schedules, self.swap_schedule_counter, self.start_time, self.env.now)
+                apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
+                self.last_schedule_event.succeed()
+            else:
+                print("Ga ada schedule")
+                self.last_schedule_event.succeed()
 
 
     def monitor_status(self):
         while True:
             yield self.env.timeout(1)  # tunggu 1 waktu simulasi (1 detik)
-            print(f"\n[{self.env.now}] Status Update:")
-            for ev in self.fleet_ev_motorbikes.values():
-                print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
-            # Print status OrderSystem
-            print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
-            for order in self.order_system.order_search_driver:
-                print(f"🔄 Order {order.id} - Status: {order.status}, "
-                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n[{self.env.now}] Status Update:")
+            # for ev in self.fleet_ev_motorbikes.values():
+            #     print(f"EV {ev.id} - Status: {ev.status}, Battery: {ev.battery.battery_now}, Pos: ({ev.current_lat}, {ev.current_lon}), Online: {ev.online_status}")
+            # # Print status OrderSystem
+            # print(f"\n📦 Order Searching ({len(self.order_system.order_search_driver)}):")
+            # for order in self.order_system.order_search_driver:
+            #     print(f"🔄 Order {order.id} - Status: {order.status}, "
+            #         f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
-            print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
-            for order in self.order_system.order_active:
-                print(f"🔄 Order {order.id} - Status: {order.status}, "
-                    f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f}), Time Created: {order.created_at}")
+            # print(f"\n📦 Order Active ({len(self.order_system.order_active)}):")
+            # for order in self.order_system.order_active:
+            #     print(f"🔄 Order {order.id} - Status: {order.status}, "
+            #         f"From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f}), Time Created: {order.created_at}")
 
-            print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
-            for order in self.order_system.order_done:
-                print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n✅ Order Done ({len(self.order_system.order_done)}):")
+            # for order in self.order_system.order_done:
+            #     print(f"✅ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
 
-            print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
-            for order in self.order_system.order_failed:
-                print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
-                    f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
+            # print(f"\n❌ Order Failed ({len(self.order_system.order_failed)}):")
+            # for order in self.order_system.order_failed:
+            #     print(f"❌ Order {order.id} - From ({order.order_origin_lat:.5f}, {order.order_origin_lon:.5f}) "
+            #         f"to ({order.order_destination_lat:.5f}, {order.order_destination_lon:.5f})")
                 
-            # print('swap schedules:', self.swap_schedules)
-            # print('swap schedules counter:', self.swap_schedule_counter[0])
-            print('status data swap schedule', status_data['swap_schedules'])
+            # # print('swap schedules:', self.swap_schedules)
+            # # print('swap schedules counter:', self.swap_schedule_counter[0])
+            # print('status data swap schedule', status_data['swap_schedules'])
                 
             # print("\n🔋 Battery Registry:")
             # for id, battery in self.battery_registry.items():
