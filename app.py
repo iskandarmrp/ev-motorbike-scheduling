@@ -64,12 +64,7 @@ async def broadcast_status_periodically():
             "fleet_ev_motorbikes": status_data.get('fleet_ev_motorbikes'),
             "battery_swap_station": status_data.get("battery_swap_station"),
             "batteries": status_data.get("batteries"),
-            "total_order": status_data.get("total_order"),
-            "order_search_driver": status_data.get("order_search_driver"),
-            "order_active": status_data.get("order_active"),
-            "order_done": status_data.get("order_done"),
-            "order_failed": status_data.get("order_failed"),
-            "time_now": status_data.get("time_now"),
+            "orders": status_data.get("orders"),
             "swap_schedules": status_data.get("swap_schedules"),
         }
 

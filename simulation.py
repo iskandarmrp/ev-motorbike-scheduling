@@ -131,6 +131,7 @@ class Simulation:
             print(schedule)
 
             if schedule:
+                schedule = {int(k): v for k, v in schedule.items()}
                 add_and_save_swap_schedule(
                     schedule, 
                     self.swap_schedules, 
