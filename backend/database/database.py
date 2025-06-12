@@ -16,15 +16,19 @@ def get_db():
 
 def seed_admin():
     from . import models
+    from passlib.context import CryptContext
 
     db = SessionLocal()
-    existing_admin = db.query(models.Admin).first()
-    if not existing_admin:
-        admin = models.Admin(
-            username="admin",
-            password="admin123",
-            nama="Admin"
-        )
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed = pwd_context.hash("admin123")
+
+    admin = db.query(models.Admin).filter(models.Admin.username == "admin").first()
+    if not admin:
+        admin = models.Admin(username="admin", password=hashed, nama="Admin")
         db.add(admin)
-        db.commit()
+    else:
+        admin.password = hashed  # ← paksa reset password
+        admin.nama = "Admin"
+
+    db.commit()
     db.close()

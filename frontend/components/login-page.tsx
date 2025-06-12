@@ -1,101 +1,115 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { apiRequest } from "@/lib/api"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { InfoIcon } from "lucide-react"
-import { DEMO_MODE } from "@/lib/config"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiRequest } from "@/lib/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
+import { DEMO_MODE } from "@/lib/config";
 
 export function LoginPage() {
-  const router = useRouter()
-  const [activeTab, setActiveTab] = useState("login")
-  const [loginData, setLoginData] = useState({ username: "", password: "" })
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("login");
+  const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({
     username: "",
     name: "",
     password: "",
     confirmPassword: "",
-  })
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const data = await apiRequest("/api/loginOperator", {
+      const formData = new URLSearchParams();
+      formData.append("username", loginData.username);
+      formData.append("password", loginData.password);
+
+      const res = await fetch("http://localhost:8000/login", {
         method: "POST",
-        body: JSON.stringify({
-          username: loginData.username,
-          password: loginData.password,
-        }),
-      })
+        body: formData,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
 
-      // Store token in localStorage
-      localStorage.setItem("token", data.token)
-      localStorage.setItem("userId", data.user_id)
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Login failed");
+      }
 
-      // Redirect to dashboard
-      router.push("/dashboard")
+      const data = await res.json();
+      localStorage.setItem("token", data.access_token);
+      router.push("/battery-swap");
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  // const handleRegister = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setError("");
 
-    if (registerData.password !== registerData.confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
+  //   if (registerData.password !== registerData.confirmPassword) {
+  //     setError("Passwords do not match");
+  //     return;
+  //   }
 
-    setLoading(true)
+  //   setLoading(true);
 
-    try {
-      const data = await apiRequest("/api/registerOperator", {
-        method: "POST",
-        body: JSON.stringify({
-          username: registerData.username,
-          name: registerData.name,
-          password: registerData.password,
-        }),
-      })
+  //   try {
+  //     const data = await apiRequest("/api/registerOperator", {
+  //       method: "POST",
+  //       body: JSON.stringify({
+  //         username: registerData.username,
+  //         name: registerData.name,
+  //         password: registerData.password,
+  //       }),
+  //     });
 
-      // Store token in localStorage
-      localStorage.setItem("token", data.token)
-      localStorage.setItem("userId", data.user_id)
+  //     // Store token in localStorage
+  //     localStorage.setItem("token", data.token);
+  //     localStorage.setItem("userId", data.user_id);
 
-      // Redirect to dashboard
-      router.push("/dashboard")
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
+  //     // Redirect to dashboard
+  //     router.push("/dashboard");
+  //   } catch (err: any) {
+  //     setError(err.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-[400px] shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">BlueBird</CardTitle>
+          <CardTitle className="text-2xl">Ojek Online</CardTitle>
           {DEMO_MODE && (
             <CardDescription className="mt-2">
-              <span className="text-xs bg-yellow-500 text-white px-2 py-1 rounded">DEMO MODE</span>
+              <span className="text-xs bg-yellow-500 text-white px-2 py-1 rounded">
+                DEMO MODE
+              </span>
             </CardDescription>
           )}
         </CardHeader>
@@ -103,7 +117,9 @@ export function LoginPage() {
           {DEMO_MODE && (
             <Alert className="mb-4">
               <InfoIcon className="h-4 w-4" />
-              <AlertDescription>Running in demo mode. Any username/password will work.</AlertDescription>
+              <AlertDescription>
+                Running in demo mode. Any username/password will work.
+              </AlertDescription>
             </Alert>
           )}
 
@@ -122,7 +138,9 @@ export function LoginPage() {
                       id="username"
                       placeholder="Enter your username"
                       value={loginData.username}
-                      onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+                      onChange={(e) =>
+                        setLoginData({ ...loginData, username: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -133,7 +151,9 @@ export function LoginPage() {
                       type="password"
                       placeholder="Enter your password"
                       value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                      onChange={(e) =>
+                        setLoginData({ ...loginData, password: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -145,7 +165,7 @@ export function LoginPage() {
               </form>
             </TabsContent>
 
-            <TabsContent value="register">
+            {/* <TabsContent value="register">
               <form onSubmit={handleRegister}>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -169,7 +189,12 @@ export function LoginPage() {
                       id="name"
                       placeholder="Enter your full name"
                       value={registerData.name}
-                      onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
+                      onChange={(e) =>
+                        setRegisterData({
+                          ...registerData,
+                          name: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -211,10 +236,10 @@ export function LoginPage() {
                   </Button>
                 </div>
               </form>
-            </TabsContent>
+            </TabsContent> */}
           </Tabs>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

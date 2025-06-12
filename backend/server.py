@@ -1,14 +1,19 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from database.database import Base, engine, seed_admin, SessionLocal
 from database.routers import jadwal, pengemudi_dan_kendaraan, baterai, admin, stasiun_penukaran_baterai, order
+from database.models import Admin
 from database import crud
 from problem_solving_agent.utils import update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_dict_to_list
 from problem_solving_agent.algorithm import simulated_annealing
 from typing import Dict, Any, List
 from schemas import PenjadwalanRequest
-from datetime import datetime
-import asyncio
-import json
+from datetime import datetime, timedelta
+import asyncio, json
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,6 +26,63 @@ app.include_router(baterai.router)
 app.include_router(admin.router)
 app.include_router(stasiun_penukaran_baterai.router)
 app.include_router(order.router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # ganti ke ['http://localhost:3000'] di production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# JWT Configuration
+SECRET_KEY = "rahasia-super-aman"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Helper
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta=None):
+    from datetime import timedelta
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# Login endpoint
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    db: Session = SessionLocal()
+    user = db.query(Admin).filter(Admin.username == form_data.username).first()
+
+    if not user:
+        print("[ERROR] Username tidak ditemukan.")
+        db.close()
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    
+    password_valid = verify_password(form_data.password, user.password)
+
+    db.close()
+
+    if not password_valid:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    token = create_access_token(data={"sub": user.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+# Protected route example
+@app.get("/me")
+def read_users_me(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        return {"username": username}
+    except JWTError:
+        raise HTTPException(status_code=403, detail="Invalid token")
 
 @app.get("/")
 def root():
@@ -100,9 +162,18 @@ async def websocket_status(websocket: WebSocket):
                     "time_now": datetime.now().isoformat(),
                 }
 
-                await websocket.send_text(json.dumps(data, default=str))
+                if websocket.client_state.name == "CONNECTED":
+                    await websocket.send_text(json.dumps(data, default=str))
+                else:
+                    print("[WebSocket] Client not connected anymore.")
+                    break
             except Exception as e:
                 print("[WebSocket ERROR]", str(e))
+                try:
+                    await websocket.close()
+                except:
+                    pass
+                break
             finally:
                 db.close()
 
@@ -111,3 +182,8 @@ async def websocket_status(websocket: WebSocket):
     except WebSocketDisconnect:
         connected_clients.remove(websocket)
         print("WebSocket disconnected")
+    except Exception as e:
+        print("[WebSocket ERROR - Outer Loop]", str(e))
+    finally:
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -29,6 +29,7 @@ import {
   Bike,
   Hourglass,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export interface Battery {
   id: string;
@@ -197,6 +198,8 @@ export function DashboardBatterySwap() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [dataSource, setDataSource] = useState<"api" | "mock">("mock");
+  const socketRef = useRef<WebSocket | null>(null);
+  const router = useRouter();
 
   // State for map data
   const [motorbikeStates, setMotorbikeStates] =
@@ -390,9 +393,17 @@ export function DashboardBatterySwap() {
   // console.log("Ini batere", batteries);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("🔐 Token tidak ditemukan, redirect ke login");
+      router.push("/");
+      return;
+    }
+
     if (DEMO_MODE || !BATTERY_WEBSOCKET_URL) return;
 
     const socket = new WebSocket(BATTERY_WEBSOCKET_URL);
+    socketRef.current = socket;
 
     socket.onopen = () => {
       setError(null);
@@ -423,8 +434,23 @@ export function DashboardBatterySwap() {
       console.warn("WebSocket closed");
     };
 
-    return () => socket.close();
+    return () => {
+      console.log("🧹 Cleaning up WebSocket");
+      socket.close();
+      socketRef.current = null;
+    };
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+
+    if (socketRef.current) {
+      socketRef.current.close(); // ⛔ force close koneksi WebSocket
+      socketRef.current = null;
+    }
+
+    router.push("/");
+  };
 
   if (loading)
     return <div className="text-center p-12">Loading dashboard...</div>;
@@ -485,6 +511,12 @@ export function DashboardBatterySwap() {
             {dataSource === "api" ? "API Data" : "Mock Data"}
           </Badge>
         </div> */}
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+        >
+          Logout
+        </button>
       </div>
 
       {/* <ConnectionStatus /> */}
