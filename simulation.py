@@ -120,18 +120,29 @@ class Simulation:
             ev_dict = convert_ev_fleet_to_dict(self.fleet_ev_motorbikes)
             station_dict = convert_station_to_dict(self.battery_swap_station)
 
-            schedule, score = send_penjadwalan_request(ev_dict, station_dict)
+            result = send_penjadwalan_request(ev_dict, station_dict)
+            if result is None:
+                print("[SCHEDULING ERROR] Penjadwalan gagal (timeout atau error lainnya).")
+                self.last_schedule_event.succeed()
+                continue  # lanjut ke siklus berikutnya
+            
+            schedule, score = result
+            print("[SCHEDULE OK] Skor:", score)
             print(schedule)
-            print("Skor:", score)
 
             if schedule:
-                add_and_save_swap_schedule(schedule, self.swap_schedules, self.swap_schedule_counter, self.start_time, self.env.now)
+                add_and_save_swap_schedule(
+                    schedule, 
+                    self.swap_schedules, 
+                    self.swap_schedule_counter, 
+                    self.start_time, 
+                    self.env.now
+                )
                 apply_schedule_to_ev_fleet(self.fleet_ev_motorbikes, schedule)
                 self.last_schedule_event.succeed()
             else:
-                print("Ga ada schedule")
+                print("[SCHEDULING] Tidak ada jadwal yang layak.")
                 self.last_schedule_event.succeed()
-
 
     def monitor_status(self):
         while True:

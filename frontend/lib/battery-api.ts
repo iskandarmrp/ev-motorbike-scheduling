@@ -11,6 +11,9 @@ export interface BatterySwapStatus {
   order_active: any[];
   order_done: any[];
   order_failed: any[];
+  total_waiting: number;
+  average_waiting_time: number;
+  total_low_battery_idle: number;
   time_now: string | number;
   swap_schedules: any[];
 }

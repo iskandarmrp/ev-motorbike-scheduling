@@ -139,7 +139,7 @@ export function SwapScheduleTable({
                         ? station.name
                         : `Station ${schedule.battery_station}`}
                     </TableCell>
-                    <TableCell>{schedule.slot}</TableCell>
+                    <TableCell>{Number(schedule.slot) + 1}</TableCell>
                     <TableCell>
                       {schedule.waiting_time.toFixed(1)} min
                     </TableCell>

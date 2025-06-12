@@ -100,31 +100,52 @@ export function BatteryStationTable({
                     <TableCell>{station.total_slots}</TableCell>
                     <TableCell>
                       <div className="space-y-1 text-sm max-h-40 overflow-y-auto">
-                        {station.slots.map((battery, index) => (
-                          <div key={battery.id} className="border rounded p-1">
-                            <div className="font-medium text-gray-800">
-                              Slot: {index + 1}
+                        {station.slots.map((battery, index) => {
+                          let statusText = "charging";
+                          let statusColor = "text-red-600";
+
+                          if (battery.status === "booked") {
+                            statusText = "booked";
+                            statusColor = "text-yellow-600";
+                          } else if (battery.battery_now >= 80) {
+                            statusText = "available";
+                            statusColor = "text-green-600";
+                          }
+
+                          return (
+                            <div
+                              key={battery.id}
+                              className="border rounded p-1"
+                            >
+                              <div className="font-medium text-gray-800">
+                                Slot: {index + 1}{" "}
+                                <span
+                                  className={`ml-2 font-semibold ${statusColor}`}
+                                >
+                                  ({statusText})
+                                </span>
+                              </div>
+                              <div className="font-medium text-gray-800">
+                                Battery ID: {battery.id}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Battery Now:{" "}
+                                <span
+                                  className={
+                                    battery.battery_now >= 80
+                                      ? "text-green-600"
+                                      : battery.battery_now >= 30
+                                      ? "text-orange-600"
+                                      : "text-red-600"
+                                  }
+                                >
+                                  {battery.battery_now}%
+                                </span>
+                                , Cycles: {battery.cycle}
+                              </div>
                             </div>
-                            <div className="font-medium text-gray-800">
-                              Battery ID: {battery.id}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Battery Now:{" "}
-                              <span
-                                className={
-                                  battery.battery_now >= 80
-                                    ? "text-green-600"
-                                    : battery.battery_now >= 30
-                                    ? "text-orange-600"
-                                    : "text-red-600"
-                                }
-                              >
-                                {battery.battery_now}%
-                              </span>
-                              , Cycles: {battery.cycle}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </TableCell>
 

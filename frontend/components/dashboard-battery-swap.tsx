@@ -38,6 +38,7 @@ export interface Battery {
   cycle: number;
   location: string;
   location_id: string;
+  status: string;
 }
 
 export interface MotorbikeState {
@@ -127,6 +128,7 @@ const mockBatteryStations: Record<string, BatteryStation> = {
         cycle: 2,
         location: "station",
         location_id: "BS001",
+        status: "booked",
       },
     ],
     available_batteries: 8,
@@ -175,6 +177,7 @@ const mockBatteries: Battery[] = [
     cycle: 10,
     location: "station",
     location_id: "BS001",
+    status: "booked",
   },
   {
     id: "BAT002",
@@ -184,6 +187,7 @@ const mockBatteries: Battery[] = [
     cycle: 5,
     location: "motorbike",
     location_id: "MB001",
+    status: "booked",
   },
 ];
 
@@ -242,6 +246,7 @@ export function DashboardBatterySwap() {
       cycle: safeNumber(b.cycle),
       location: safeString(b.location),
       location_id: safeString(b.location_id),
+      status: safeString(b.status),
     }));
 
     const allSwapSchedules: SwapSchedule[] = safeArray(data.swap_schedules).map(
@@ -272,9 +277,9 @@ export function DashboardBatterySwap() {
         current_lon: safeNumber(m.longitude),
         status: safeString(m.status),
         battery_id: safeNumber(m.battery_id),
-        battery_now: safeNumber(battery?.battery_now),
-        battery_max: safeNumber(battery?.capacity),
-        battery_cycle: safeNumber(battery?.cycle),
+        battery_now: safeNumber(m.battery_now),
+        battery_max: safeNumber(m.battery_max),
+        battery_cycle: safeNumber(m.battery_cycle),
         online_status: safeString(m.online_status),
         assigned_order_id: m.order_id ?? undefined,
         assigned_swap_schedule:
@@ -297,6 +302,7 @@ export function DashboardBatterySwap() {
           cycle: safeNumber(battery?.cycle),
           location: safeString(battery?.location),
           location_id: safeString(battery?.location_id),
+          status: safeString(battery?.status),
         };
       });
 
@@ -463,10 +469,10 @@ export function DashboardBatterySwap() {
             Electric Motorbikes Fleet Management
           </h1>
           <p className="text-muted-foreground">Battery Swap System Dashboard</p>
-          <span className="text-xs text-muted-foreground">
+          {/* <span className="text-xs text-muted-foreground">
             Last updated:{" "}
             {status?.time_now && formatTime(status.time_now.toString())}
-          </span>
+          </span> */}
         </div>
         {/* <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm">
@@ -484,7 +490,7 @@ export function DashboardBatterySwap() {
       {/* <ConnectionStatus /> */}
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -591,6 +597,53 @@ export function DashboardBatterySwap() {
             <p className="text-xs text-muted-foreground">Orders today</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Waiting</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {safeNumber(status?.total_waiting, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">Total waiting today</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Average Waiting Time
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {safeNumber(status?.average_waiting_time, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Average waiting time today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Idle Motorbikes with Low Battery
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {safeNumber(status?.total_low_battery_idle, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total idle motorbikes with low battery today
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* API Data Debug Info (only in development) */}
@@ -634,7 +687,7 @@ export function DashboardBatterySwap() {
           <TabsTrigger value="batteries">Batteries</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="schedule">Swap Schedule</TabsTrigger>
-          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+          {/* <TabsTrigger value="logs">Activity Logs</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -728,7 +781,7 @@ export function DashboardBatterySwap() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="logs">
+        {/* <TabsContent value="logs">
           <Card>
             <CardHeader>
               <CardTitle>Fleet Activity Logs</CardTitle>
@@ -740,7 +793,7 @@ export function DashboardBatterySwap() {
               <FleetActivityLog logs={activityLogs} />
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   );
