@@ -16,6 +16,7 @@ export interface BatterySwapStatus {
   total_low_battery_idle: number;
   time_now: string | number;
   swap_schedules: any[];
+  avg_daily_incomes: number;
 }
 
 export async function fetchBatteryRoot(): Promise<any> {

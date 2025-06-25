@@ -35,6 +35,8 @@ def insert_orders(data: list[dict], db: Session = Depends(get_db)):
                 "waktu_dibuat": waktu_dibuat,
                 "waktu_selesai": waktu_selesai,
                 "waktu_pencarian": entry.get("searching_time"),
+                "jarak": entry["distance"],
+                "biaya": entry["cost"]
             })
         else:
             # ➕ INSERT
@@ -49,6 +51,8 @@ def insert_orders(data: list[dict], db: Session = Depends(get_db)):
                 waktu_dibuat=waktu_dibuat,
                 waktu_selesai=waktu_selesai,
                 waktu_pencarian=entry.get("searching_time"),
+                jarak=entry["distance"],
+                biaya=entry["cost"]
             )
             db.add(order)
 
@@ -73,6 +77,8 @@ def get_all_orders(db: Session = Depends(get_db)):
             "order_destination_lon": o.longitude_tujuan,
             "created_at": o.waktu_dibuat.isoformat() if o.waktu_dibuat else None,
             "completed_at": o.waktu_selesai.isoformat() if o.waktu_selesai else None,
+            "distance": o.jarak,
+            "cost": o.biaya
         })
 
     return result

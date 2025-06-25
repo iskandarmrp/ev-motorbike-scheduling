@@ -9,7 +9,8 @@ from database.routers import jadwal, pengemudi_dan_kendaraan, baterai, admin, st
 from database.models import Admin
 from database import crud
 from problem_solving_agent.utils import update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_dict_to_list
-from problem_solving_agent.algorithm import simulated_annealing
+from problem_solving_agent.algorithm import simulated_annealing, alns_ev_scheduler
+import time
 from typing import Dict, Any, List
 from schemas import PenjadwalanRequest
 from datetime import datetime, timedelta
@@ -95,23 +96,36 @@ async def penjadwalan(data: PenjadwalanRequest):
     return result
 
 def run_penjadwalan(data):
+    start = time.time()
     fleet_ev_motorbikes = data.fleet_ev_motorbikes
     battery_swap_station = data.battery_swap_station
 
     update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station)
     ev_dict = convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes)
     station_list = convert_station_dict_to_list(battery_swap_station)
-    schedule, score = simulated_annealing(
-        station_list,
-        ev_dict,
+
+    # schedule, score = simulated_annealing(
+    #     station_list,
+    #     ev_dict,
+    #     threshold=15,
+    #     charging_rate=100/240,
+    #     initial_temp=100.0,
+    #     alpha=0.95,
+    #     T_min=0.001,
+    #     max_iter=200
+    # )
+
+    schedule, score, history = alns_ev_scheduler(
+        battery_swap_station=station_list,
+        ev=ev_dict,
         threshold=15,
-        charging_rate=100/240,
-        initial_temp=100.0,
-        alpha=0.95,
-        T_min=0.001,
+        charging_rate=100 / 240,
+        required_battery_threshold=80,
         max_iter=200
     )
-    return schedule, score
+
+    execution_time = time.time() - start
+    return schedule, score, execution_time
 
 # Websocket
 connected_clients = set()
@@ -144,12 +158,20 @@ async def websocket_status(websocket: WebSocket):
 
                 total_low_battery_idle = len(low_battery_idle_motorbikes)
 
+                daily_incomes = [
+                    m["daily_income"] for m in fleet_ev_motorbikes 
+                    if m.get("daily_income") is not None
+                ]
+
+                avg_daily_income = sum(daily_incomes) / len(daily_incomes) if daily_incomes else 0
+
                 data = {
                     "jumlah_ev_motorbike": len(crud.get_all_motorbikes(db)),
                     "jumlah_battery_swap_station": len(crud.get_all_stations(db)),
                     "fleet_ev_motorbikes": fleet_ev_motorbikes,
                     "battery_swap_station": crud.get_all_stations(db),
                     "batteries": crud.get_all_batteries(db),
+                    "avg_daily_incomes": avg_daily_income,
                     "order_search_driver": crud.get_all_orders(db, status="searching driver"),
                     "order_active": crud.get_all_orders(db, status="on going"),
                     "order_done": crud.get_all_orders(db, status="done"),

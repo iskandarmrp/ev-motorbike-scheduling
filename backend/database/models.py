@@ -30,6 +30,7 @@ class Pengemudi(Base):
     online_status = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
+    pendapatan_harian = Column(Float)
 
 class Order(Base):
     __tablename__ = "order"
@@ -43,6 +44,8 @@ class Order(Base):
     longitude_tujuan = Column(Float)
     waktu_dibuat = Column(DateTime)
     waktu_selesai = Column(DateTime, nullable=True)
+    jarak = Column(Float)
+    biaya = Column(Float)
 
 class StasiunPenukaranBaterai(Base):
     __tablename__ = "stasiun_penukaran_baterai"

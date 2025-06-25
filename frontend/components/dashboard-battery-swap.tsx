@@ -663,16 +663,16 @@ export function DashboardBatterySwap() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Idle Motorbikes with Low Battery
+              Average Daily Incomes
             </CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {safeNumber(status?.total_low_battery_idle, 0)}
+              {safeNumber(status?.avg_daily_incomes, 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total idle motorbikes with low battery today
+              Average daily incomes today
             </p>
           </CardContent>
         </Card>

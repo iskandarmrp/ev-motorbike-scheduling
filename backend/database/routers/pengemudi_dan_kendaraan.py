@@ -28,7 +28,8 @@ def insert_motorbikes(data: list[dict], db: Session = Depends(get_db)):
                 "status": entry["status"],
                 "online_status": entry["online_status"],
                 "latitude": entry["latitude"],
-                "longitude": entry["longitude"]
+                "longitude": entry["longitude"],
+                "pendapatan_harian": entry["daily_income"]
             })
 
         else:
@@ -46,7 +47,8 @@ def insert_motorbikes(data: list[dict], db: Session = Depends(get_db)):
                 status=entry["status"],
                 online_status=entry["online_status"],
                 latitude=entry["latitude"],
-                longitude=entry["longitude"]
+                longitude=entry["longitude"],
+                pendapatan_harian=entry["daily_income"]
             )
             db.add(pengemudi)
 
@@ -67,7 +69,8 @@ def get_all_motorbikes(db: Session = Depends(get_db)):
             "status": p.status,
             "online_status": p.online_status,
             "max_speed": kendaraan.kecepatan_maksimum if kendaraan else None,
-            "battery_id": kendaraan.id_baterai if kendaraan else None
+            "battery_id": kendaraan.id_baterai if kendaraan else None,
+            "daily_income": p.pendapatan_harian
         })
 
     return result

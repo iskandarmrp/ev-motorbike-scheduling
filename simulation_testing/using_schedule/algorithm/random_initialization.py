@@ -16,29 +16,9 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
     for i, data in ev.items():
         if data['swap_schedule']:
             continue
-
-        if data['battery_now'] < 30:
-            energy_to_nearest = min(data['energy_distance'])
-            if data['battery_now'] - energy_to_nearest < threshold:
-                candidates.append(i)
-        else:
-            solution[i] = {
-                'assigned': False,
-                'swap_id': None,
-                'battery_now': data['battery_now'],
-                'battery_cycle': data['battery_cycle'],
-                'battery_station': None,
-                'slot': None,
-                'energy_distance': None,
-                'travel_time': None,
-                'waiting_time': None,
-                'exchanged_battery': None,
-                'received_battery': None,
-                'received_battery_cycle': None,
-                'status': None,
-                'scheduled_time': None,
-            }
-            continue
+        energy_to_nearest = min(data['energy_distance'])
+        if data['battery_now'] - energy_to_nearest < threshold:
+            candidates.append(i)
 
     # Acak urutan EV
     random.shuffle(candidates)

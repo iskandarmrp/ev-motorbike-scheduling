@@ -39,6 +39,7 @@ def get_all_motorbikes(db: Session):
             "battery_max": baterai.kapasitas_maksimum if baterai else None,
             "battery_cycle": baterai.siklus_baterai if baterai else None,
             "order_id": str(order.id) if order else None,
+            "daily_income": p.pendapatan_harian,
             "swap_schedule": {
                 "id": str(jadwal.id),
                 "battery_now": jadwal.perkiraan_kapasitas_baterai_yang_ditukar,
@@ -160,7 +161,9 @@ def get_all_orders(db: Session, status: str = None):
             "order_destination_lat": o.latitude_tujuan,
             "order_destination_lon": o.longitude_tujuan,
             "created_at": o.waktu_dibuat.isoformat() if o.waktu_dibuat else None,
-            "completed_at": o.waktu_selesai.isoformat() if o.waktu_selesai else None
+            "completed_at": o.waktu_selesai.isoformat() if o.waktu_selesai else None,
+            "distance": o.jarak,
+            "cost": o.biaya
         }
         for o in q.all()
     ]
