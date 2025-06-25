@@ -159,6 +159,7 @@ def convert_ev_fleet_to_dict(fleet_ev_motorbikes):
         }
     return result
 
+#
 def convert_station_to_dict(battery_swap_station):
     station_dict = {}
     for station_id in sorted(battery_swap_station.keys()):

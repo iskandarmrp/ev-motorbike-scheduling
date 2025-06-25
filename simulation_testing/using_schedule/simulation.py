@@ -400,18 +400,16 @@ class Simulation:
                 continue
 
             print(f"[SCHEDULING @ {self.env.now}m] Menunggu sinkronisasi selesai...")
-            time.sleep(0.5)
-            yield self.sync_done_event
-
-            # Create new event for synchronization
+            
             self.last_schedule_event = self.env.event()
             self.order_system.update_schedule_event(self.last_schedule_event)
 
-            ev_dict = convert_ev_fleet_to_dict(self.fleet_ev_motorbikes)
-            station_dict = convert_station_to_dict(self.battery_swap_station)
+            time.sleep(0.5)
+            yield self.sync_done_event
+
 
             start_get_schedule_time = time.time()
-            result = send_penjadwalan_request(ev_dict, station_dict)
+            response = requests.get("http://localhost:8000/api/jadwal-penukaran")
             end_get_schedule_time = time.time()
 
             scheduling_time = (end_get_schedule_time - start_get_schedule_time)/60
@@ -420,15 +418,22 @@ class Simulation:
 
             print("Waktu penjadwalan:",self.env.now)
 
-            if result is None:
-                print("[SCHEDULING ERROR] Penjadwalan gagal (timeout atau error lainnya).")
+            # if result is None:
+            #     print("[SCHEDULING ERROR] Penjadwalan gagal (timeout atau error lainnya).")
+            #     self.last_schedule_event.succeed()
+            #     continue  # lanjut ke siklus berikutnya
+            if response.status_code != 200:
+                print("[SCHEDULING ERROR] Penjadwalan gagal (HTTP error).")
                 self.last_schedule_event.succeed()
-                continue  # lanjut ke siklus berikutnya
+                continue
             
-            schedule, score, execution_time = result
+            result = response.json()
+            schedule = result["schedule"]
+            score = result["score"]
+            execution_time = result["execution_time"]
+            print(schedule)
             print("[SCHEDULE OK] Skor:", score)
             print("Time Execution:", execution_time)
-            # print(schedule)
 
             if schedule:
                 schedule = {int(k): v for k, v in schedule.items()}
@@ -767,7 +772,7 @@ class Simulation:
 
         # Start EV processes
         for ev in self.fleet_ev_motorbikes.values():
-            self.env.process(ev.drive(self.env, self.battery_swap_station, self.order_system, self.start_time))
+            self.env.process(ev.drive(self.env, self.battery_swap_station, self.swap_schedules, self.order_system, self.start_time))
 
         # Start battery charging processes
         for station in self.battery_swap_station.values():

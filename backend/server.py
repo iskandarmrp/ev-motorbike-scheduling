@@ -8,7 +8,7 @@ from database.database import Base, engine, seed_admin, SessionLocal
 from database.routers import jadwal, pengemudi_dan_kendaraan, baterai, admin, stasiun_penukaran_baterai, order
 from database.models import Admin
 from database import crud
-from problem_solving_agent.utils import update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_dict_to_list
+from problem_solving_agent.utils import update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_dict_to_list, get_fleet_dict_and_station_list
 from problem_solving_agent.algorithm import simulated_annealing, alns_ev_scheduler
 import time
 from typing import Dict, Any, List
@@ -134,12 +134,47 @@ async def sync_battery_swap_system_data(request: Request):
     finally:
         db.close()
 
+@app.get("/api/jadwal-penukaran")
+async def get_jadwal_penukaran():
+    start = time.time()
+    db = SessionLocal()
+    try:
+        fleet_ev_motorbikes = crud.get_all_motorbikes(db)
+        schedules = crud.get_all_schedules(db)
+        battery_swap_stations = crud.get_all_stations(db)
+        batteries = crud.get_all_batteries(db)  # <-- FIXED here
+        orders = crud.get_all_orders(db, status="on going")
+
+        ev_dict, station_list = get_fleet_dict_and_station_list(
+            fleet_ev_motorbikes, schedules, orders, battery_swap_stations, batteries
+        )
+
+        schedule, score, history = alns_ev_scheduler(
+            battery_swap_station=station_list,
+            ev=ev_dict,
+            threshold=15,
+            charging_rate=100 / 240,
+            required_battery_threshold=80,
+            max_iter=200
+        )
+
+        execution_time = time.time() - start
+        return {
+            "schedule": schedule,
+            "score": score,
+            "execution_time": execution_time
+        }
+    finally:
+        db.close()
+
+
 @app.post("/penjadwalan")
 async def penjadwalan(data: PenjadwalanRequest):
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, run_penjadwalan, data)
     return result
 
+#
 def run_penjadwalan(data):
     start = time.time()
     fleet_ev_motorbikes = data.fleet_ev_motorbikes

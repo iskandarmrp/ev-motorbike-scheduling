@@ -247,6 +247,8 @@ def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 #                     ev["energy_distance"].append(total_energy)
 #                     ev["travel_time"].append(total_duration)
 
+#
+
 def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station):
     for ev in fleet_ev_motorbikes.values():
         if ev.get("swap_schedule") or ev.get("battery_now") > 30:
@@ -400,3 +402,125 @@ def convert_station_dict_to_list(station_dict):
         ]
         station_list.append(battery_list)
     return station_list
+
+
+def convert_ev_fleet_to_dict(fleet_ev_motorbikes):
+    result = {}
+    for ev_id, ev in fleet_ev_motorbikes.items():
+        result[ev_id] = {
+            "id": ev.id,
+            "max_speed": ev.max_speed,
+            "current_lat": ev.current_lat,
+            "current_lon": ev.current_lon,
+            "status": ev.status,
+            "online_status": ev.online_status,
+            "order_schedule": ev.order_schedule,
+            "swap_schedule": ev.swap_schedule,
+            "energy_distance": ev.energy_distance,
+            "travel_time": ev.travel_time,
+            "battery_now": ev.battery.battery_now,
+            "battery_cycle": ev.battery.cycle
+        }
+    return result
+
+#
+def get_station_dict_from_list(battery_swap_stations, batteries):
+    # Buat map baterai berdasarkan ID-nya
+    battery_map = {b["id"]: b for b in batteries}
+
+    station_dict = {}
+    for station in battery_swap_stations:
+        station_id = int(station["id"])
+        lat = station["latitude"]
+        lon = station["longitude"]
+
+        # Ambil battery info dari baterai yang id-nya ada di slots
+        battery_infos = []
+        for battery_id in station["slots"]:
+            battery = battery_map.get(battery_id)
+            if battery:
+                battery_infos.append({
+                    "battery_now": battery["battery_now"],
+                    "cycle": battery["cycle"]
+                })
+
+        station_dict[station_id] = {
+            "lat": lat,
+            "lon": lon,
+            "batteries": battery_infos
+        }
+
+    return station_dict
+
+
+def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, battery_swap_stations, batteries):
+    fleet_dict = {}
+    station_list = {}
+
+    print(orders)
+
+    if orders:
+        order_map = {
+            int(order["assigned_motorbike_id"]): {
+                "order_id": int(order["id"]),
+                "order_origin_lat": order["order_origin_lat"],
+                "order_origin_lon": order["order_origin_lon"],
+                "order_destination_lat": order["order_destination_lat"],
+                "order_destination_lon": order["order_destination_lon"]
+            }
+            for order in orders
+            if order["assigned_motorbike_id"] is not None and order["status"] == "on going"
+        }
+    else:
+        order_map = {}
+
+    print(schedules)
+    
+    if schedules:
+        swap_schedule_map = {
+            int(sched["ev_id"]): {
+                'assigned': True,
+                'swap_id': int(sched["id"]) if sched.get("id") else None,
+                'battery_now': sched.get("battery_now"),
+                'battery_cycle': sched.get("battery_cycle"),
+                'battery_station': int(sched["battery_station"]) if sched.get("battery_station") else None,
+                'slot': int(sched["slot"]) if sched.get("slot") else None,
+                'energy_distance': sched.get("energy_distance"),
+                'travel_time': sched.get("travel_time"),
+                'waiting_time': sched.get("waiting_time", 0),
+                'exchanged_battery': sched.get("exchanged_battery"),
+                'received_battery': sched.get("received_battery", 0),
+                'received_battery_cycle': sched.get("received_battery_cycle", 0),
+                'status': sched.get("status"),
+                'scheduled_time': sched.get("scheduled_time")
+            }
+            for sched in schedules
+            if sched.get("ev_id") is not None and sched.get("status") == "on going"
+        }
+    else:
+        swap_schedule_map = {}
+
+    for ev in fleet_ev_motorbikes:
+        ev_id = int(ev["id"])
+        fleet_dict[ev_id] = {
+            "id": ev_id,
+            "max_speed": 60,  # jika tidak tersedia di ev, set default
+            "current_lat": ev["latitude"],
+            "current_lon": ev["longitude"],
+            "status": ev["status"],
+            "online_status": ev["online_status"],
+            "order_schedule": order_map.get(ev_id, {}),
+            "swap_schedule": swap_schedule_map.get(ev_id, {}),
+            "energy_distance": [],  # akan diisi nanti
+            "travel_time": [],      # akan diisi nanti
+            "battery_now": ev["battery_now"],
+            "battery_cycle": ev["battery_cycle"]
+        }
+
+    station_dict = get_station_dict_from_list(battery_swap_stations, batteries)
+
+    update_energy_distance_and_travel_time_all(fleet_dict, station_dict)
+    fleet_dict = convert_fleet_ev_motorbikes_to_dict(fleet_dict)
+    station_list = convert_station_dict_to_list(station_dict)
+
+    return fleet_dict, station_list

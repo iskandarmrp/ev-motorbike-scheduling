@@ -105,7 +105,7 @@ class EVMotorBike:
         battery_registry[battery_counter[0]] = self.battery
         battery_counter[0] += 1
 
-    def drive(self, env, battery_swap_station, order_system, start_time):
+    def drive(self, env, battery_swap_station, swap_schedules, order_system, start_time):
         while True:
             if self.online_status == 'online':
                 if self.status == 'idle':
@@ -264,11 +264,11 @@ class EVMotorBike:
                         yield env.timeout(1)
 
                     self.daily_income -= 5000
-                    self.battery_swap(env, battery_swap_station)
+                    self.battery_swap(env, battery_swap_station, swap_schedules)
             else:
                 yield env.timeout(1)
 
-    def battery_swap(self, env, battery_swap_station):
+    def battery_swap(self, env, battery_swap_station, swap_schedules):
         station_id = self.swap_schedule["battery_station"]
         slot_index = self.swap_schedule["slot"]
 
@@ -287,4 +287,11 @@ class EVMotorBike:
         self.battery = slot_battery
 
         self.status = 'idle'
+
+        swap_id = self.swap_schedule.get("swap_id")
+        current_schedule = swap_schedules.get(swap_id)
+
+        if current_schedule:
+            current_schedule["status"] = "done"
+
         self.swap_schedule = {}
