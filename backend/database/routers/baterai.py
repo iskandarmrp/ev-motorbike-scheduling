@@ -6,7 +6,7 @@ from .. import models
 router = APIRouter(prefix="/baterai", tags=["Baterai"])
 
 @router.post("/bulk")
-def insert_motorbikes(data: list[dict], db: Session = Depends(get_db)):
+def insert_batteries(data: list[dict], db: Session = Depends(get_db)):
     existing_ids = {
         row.id for row in db.query(models.Baterai.id).filter(
             models.Baterai.id.in_([d["id"] for d in data])

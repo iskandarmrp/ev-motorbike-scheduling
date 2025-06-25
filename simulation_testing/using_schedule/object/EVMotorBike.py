@@ -258,6 +258,8 @@ class EVMotorBike:
                     slot_index = self.swap_schedule["slot"]
                     station = battery_swap_station.get(battery_station_id)
 
+                    print("slot index",slot_index)
+                    print("panjang slot", len(station.slots))
                     while station.slots[slot_index].battery_now < 80:
                         yield env.timeout(1)
 

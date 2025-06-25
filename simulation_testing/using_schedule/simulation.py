@@ -4,6 +4,7 @@ import pandas as pd
 import random
 import time
 import numpy as np
+import requests
 from collections import defaultdict
 import math
 from datetime import datetime, timedelta
@@ -22,7 +23,6 @@ from simulation_utils import (
     convert_station_to_dict,
     send_penjadwalan_request
 )
-from algorithm.algorithm import simulated_annealing
 
 # Status
 status_data = {
@@ -69,6 +69,7 @@ status_data = {
 #     23: 21   # 22:30-23:30
 # }
 
+# Setengah order
 ORDER_LAMBDA_BY_HOUR = {
     0: 5, 1: 3, 2: 2, 3: 2, 4: 2, 5: 1.5, 6: 4, 7: 10, 8: 18, 9: 20, 10: 21.5, 11: 24,
     12: 23, 13: 22.5, 14: 25.5, 15: 26.5, 16: 28.5, 17: 35, 18: 37, 19: 30, 20: 18, 21: 11.5, 22: 16, 23: 10.5
@@ -134,6 +135,8 @@ class Simulation:
         
         # Scheduling components (from simulation.py)
         self.last_schedule_event = None
+        self.sync_done_event = None
+
         self.swap_schedule_counter = [0]
         self.swap_schedules = {}
         
@@ -391,8 +394,15 @@ class Simulation:
     def scheduling(self):
         """Battery swap scheduling using simulated annealing (from simulation.py)"""
         while True:
-            yield self.env.timeout(10)
-            
+            yield self.env.timeout(1)
+
+            if self.env.now % 10 != 0:
+                continue
+
+            print(f"[SCHEDULING @ {self.env.now}m] Menunggu sinkronisasi selesai...")
+            time.sleep(0.5)
+            yield self.sync_done_event
+
             # Create new event for synchronization
             self.last_schedule_event = self.env.event()
             self.order_system.update_schedule_event(self.last_schedule_event)
@@ -400,7 +410,16 @@ class Simulation:
             ev_dict = convert_ev_fleet_to_dict(self.fleet_ev_motorbikes)
             station_dict = convert_station_to_dict(self.battery_swap_station)
 
+            start_get_schedule_time = time.time()
             result = send_penjadwalan_request(ev_dict, station_dict)
+            end_get_schedule_time = time.time()
+
+            scheduling_time = (end_get_schedule_time - start_get_schedule_time)/60
+
+            yield self.env.timeout(int(scheduling_time))
+
+            print("Waktu penjadwalan:",self.env.now)
+
             if result is None:
                 print("[SCHEDULING ERROR] Penjadwalan gagal (timeout atau error lainnya).")
                 self.last_schedule_event.succeed()
@@ -409,7 +428,7 @@ class Simulation:
             schedule, score, execution_time = result
             print("[SCHEDULE OK] Skor:", score)
             print("Time Execution:", execution_time)
-            print(schedule)
+            # print(schedule)
 
             if schedule:
                 schedule = {int(k): v for k, v in schedule.items()}
@@ -425,8 +444,40 @@ class Simulation:
                 print("Execution tracking:", self.execution_time_tracking)
                 self.last_schedule_event.succeed()
             else:
-                print("[SCHEDULING] Tidak ada jadwal yang layak.")
+                print("[SCHEDULING] Tidak ada jadwal")
                 self.last_schedule_event.succeed()
+
+    def sync_data_to_server(self):
+        """Sinkronisasi sinkron (blocking) setiap 5 menit simulasi"""
+        while True:
+            yield self.env.timeout(5)
+            self.sync_done_event = self.env.event()
+
+            data_online = {
+                "fleet_ev_motorbikes": status_data.get("fleet_ev_motorbikes", []),
+                "orders": status_data.get("orders", []),
+                "swap_schedules": status_data.get("swap_schedules", []),
+            }
+
+            data_bss = {
+                "battery_swap_station": status_data.get("battery_swap_station", []),
+                "batteries": status_data.get("batteries", []),
+                "swap_schedules": status_data.get("swap_schedules", []),
+            }
+
+            try:
+                print(f"[SYNC @ {self.env.now}m] Kirim ke /api/sync-online-transportation-data ...")
+                res1 = requests.post("http://localhost:8000/api/sync-online-transportation-data", json=data_online, timeout=10)
+                print("Status:", res1.status_code)
+
+                print(f"[SYNC @ {self.env.now}m] Kirim ke /api/sync-battery-swap-system-data ...")
+                res2 = requests.post("http://localhost:8000/api/sync-battery-swap-system-data", json=data_bss, timeout=10)
+                print("Status:", res2.status_code)
+
+                self.sync_done_event.succeed()
+            except Exception as e:
+                print("[SYNC ERROR]", e)
+                self.sync_done_event.succeed()
 
     def hourly_statistics(self):
         """Collect hourly statistics"""
@@ -707,6 +758,7 @@ class Simulation:
     def simulate(self):
         """Run the simulation with scheduling"""
         self.env.process(self.monitor_status())
+        self.env.process(self.sync_data_to_server())
         self.env.process(self.track_station_loads())
         self.env.process(self.metrics_monitor())
         self.env.process(self.hourly_statistics())
@@ -747,11 +799,3 @@ if __name__ == '__main__':
         csv_path="scraping/data/sgb_jakarta_completed.csv"
     )
     sim.run()
-
-# Todo:
-# - Front end
-
-# Masalah:
-# Hitung-hitungan baterai kayaknya salah (ada baterai minus) (karena pembulatan kayaknya)
-# Harusnya pas bikin order juga cek nearest battery_swap_station < 15 (pake yg udh ada di update energy distance aja)
-# Ada yang heading to order tapi gajalan

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Depends, HTTPException, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -85,9 +85,54 @@ def read_users_me(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise HTTPException(status_code=403, detail="Invalid token")
 
-@app.get("/")
-def root():
-    return {"message": "EV Battery Swap Scheduling API"}
+@app.post("/api/sync-online-transportation-data")
+async def sync_online_transportation_data(request: Request):
+    data = await request.json()
+    db: Session = SessionLocal()
+    
+    try:
+        if "fleet_ev_motorbikes" in data:
+            pengemudi_dan_kendaraan.insert_motorbikes(data["fleet_ev_motorbikes"], db=db)
+
+        if "orders" in data:
+            order.insert_orders(data["orders"], db=db)
+
+        if "swap_schedules" in data:
+            jadwal.insert_swap_schedules(data["swap_schedules"], db=db)
+
+        db.commit()
+        return {"message": "Online transportation data synced successfully"}
+    
+    except Exception as e:
+        db.rollback()
+        print("[SYNC ERROR]", str(e))
+        raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
+    
+    finally:
+        db.close()
+
+@app.post("/api/sync-battery-swap-system-data")
+async def sync_battery_swap_system_data(request: Request):
+    data = await request.json()
+    db: Session = SessionLocal()
+    
+    try:
+        if "battery_swap_station" in data:
+            stasiun_penukaran_baterai.insert_station(data["battery_swap_station"], db=db)
+
+        if "batteries" in data:
+            baterai.insert_batteries(data["batteries"], db=db)
+
+        db.commit()
+        return {"message": "Battery swap data synced successfully"}
+    
+    except Exception as e:
+        db.rollback()
+        print("[SYNC ERROR]", str(e))
+        raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
+    
+    finally:
+        db.close()
 
 @app.post("/penjadwalan")
 async def penjadwalan(data: PenjadwalanRequest):

@@ -47,11 +47,6 @@ def startup_event():
         return results
 
     def run_sim():
-        # try:
-        #     num_drivers = int(input("Enter number of drivers: "))
-        #     num_stations = int(input("Enter number of battery swap stations: "))
-        # except ValueError:
-        #     print("Invalid input. Using default values.")
         num_drivers = 1915
         num_stations = 81
         
@@ -69,152 +64,53 @@ def startup_event():
     thread.start()
 
     # Start broadcaster WebSocket (di thread asyncio terpisah)
-    loop = asyncio.get_event_loop()
-    loop.create_task(broadcast_status_periodically())
-    loop.create_task(sync_fleet_motorbikes_periodically())
-    loop.create_task(sync_battery_swap_stations_periodically())
-    loop.create_task(sync_batteries_periodically())
-    loop.create_task(sync_orders_periodically())
-    loop.create_task(sync_swap_schedules_periodically())
+#     loop = asyncio.get_event_loop()
 
-# WebSocket endpoint untuk kirim data ke frontend
-@app.websocket("/ws/status")
-async def websocket_status(websocket: WebSocket):
-    await websocket.accept()
-    connected_clients.add(websocket)
-    try:
-        while True:
-            await asyncio.sleep(1000)  # Idle, update dikirim dari broadcaster
-    except WebSocketDisconnect:
-        connected_clients.remove(websocket)
+#     loop.create_task(sync_online_transportation_system_data_periodically())
+#     loop.create_task(sync_battery_swap_system_data_periodically())
 
-# Fungsi yang push status ke semua klien tiap 5 detik
-async def broadcast_status_periodically():
-    while True:
-        message = {
-            "jumlah_ev_motorbike": status_data.get("jumlah_ev_motorbike"),
-            "jumlah_battery_swap_station": status_data.get("jumlah_battery_swap_station"),
-            "fleet_ev_motorbikes": status_data.get('fleet_ev_motorbikes'),
-            "battery_swap_station": status_data.get("battery_swap_station"),
-            "batteries": status_data.get("batteries"),
-            "orders": status_data.get("orders"),
-            "swap_schedules": status_data.get("swap_schedules"),
-        }
+# async def sync_online_transportation_system_data():
+#     url = "http://localhost:8000/api/sync-online-transportation-data"
+#     data = {
+#         "fleet_ev_motorbikes": status_data.get("fleet_ev_motorbikes", []),
+#         "orders": status_data.get("orders", []),
+#         "swap_schedules": status_data.get("swap_schedules", []),
+#     }
 
-        # Kirim ke semua klien
-        disconnected = set()
-        for client in connected_clients:
-            try:
-                await client.send_text(json.dumps(message))
-            except Exception:
-                disconnected.add(client)
+#     async with httpx.AsyncClient() as client:
+#         try:
+#             response = await client.post(url, json=data, timeout=10.0)
+#             print("[SYNC] Sync online transportation system data success:", response.json())
+#         except Exception as e:
+#             print("[SYNC ERROR]", str(e))
 
-        # Hapus klien yang disconnect
-        connected_clients.difference_update(disconnected)
+# async def sync_online_transportation_system_data_periodically():
+#     while True:
+#         try:
+#             await sync_online_transportation_system_data()
+#         except Exception as e:
+#             print("[SYNC ERROR] Gagal sync:", str(e))
+#         await asyncio.sleep(5)
 
-        await asyncio.sleep(1)  # interval push data
+# async def sync_battery_swap_system_data():
+#     url = "http://localhost:8000/api/sync-battery-swap-system-data"
+#     data = {
+#         "battery_swap_station": status_data.get("battery_swap_station", []),
+#         "batteries": status_data.get("batteries", []),
+#         "swap_schedules": status_data.get("swap_schedules", []),
+#     }
 
-# Fungsi sinkronisasi fleet ke backend
-async def sync_fleet_motorbikes():
-    url = "http://localhost:8000/pengemudi-dan-kendaraan/bulk"
-    data = status_data.get("fleet_ev_motorbikes", [])
+#     async with httpx.AsyncClient() as client:
+#         try:
+#             response = await client.post(url, json=data, timeout=10.0)
+#             print("[SYNC] Sync battery swap system data success:", response.json())
+#         except Exception as e:
+#             print("[SYNC ERROR]", str(e))
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=data, timeout=10.0)
-            response.raise_for_status()
-            print("[SYNC] fleet_ev_motorbikes synced:", response.json())
-        except Exception as e:
-            print("[SYNC ERROR] fleet_ev_motorbikes:", str(e))
-
-async def sync_fleet_motorbikes_periodically():
-    while True:
-        try:
-            await sync_fleet_motorbikes()
-        except Exception as e:
-            print("[SYNC ERROR] Gagal sync:", str(e))
-        await asyncio.sleep(2)
-
-# Fungsi sinkronisasi bss ke backend
-async def sync_battery_swap_stations():
-    url = "http://localhost:8000/stasiun-penukaran-baterai/bulk"
-    data = status_data.get("battery_swap_station", [])
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=data, timeout=10.0)
-            response.raise_for_status()
-            print("[SYNC] battery_swap_station synced:", response.json())
-        except Exception as e:
-            print("[SYNC ERROR] battery_swap_station:", str(e))
-
-async def sync_battery_swap_stations_periodically():
-    while True:
-        try:
-            await sync_battery_swap_stations()
-        except Exception as e:
-            print("[SYNC ERROR] Gagal sync:", str(e))
-        await asyncio.sleep(2)
-
-# Fungsi sinkronisasi batteries ke backend
-async def sync_batteries():
-    url = "http://localhost:8000/baterai/bulk"
-    data = status_data.get("batteries", [])
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=data, timeout=10.0)
-            response.raise_for_status()
-            print("[SYNC] batteries synced:", response.json())
-        except Exception as e:
-            print("[SYNC ERROR] batteries:", str(e))
-
-async def sync_batteries_periodically():
-    while True:
-        try:
-            await sync_batteries()
-        except Exception as e:
-            print("[SYNC ERROR] Gagal sync:", str(e))
-        await asyncio.sleep(2)
-
-# Fungsi sinkronisasi orders ke backend
-async def sync_orders():
-    url = "http://localhost:8000/order/bulk"
-    data = status_data.get("orders", [])
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=data, timeout=10.0)
-            response.raise_for_status()
-            print("[SYNC] orders synced:", response.json())
-        except Exception as e:
-            print("[SYNC ERROR] orders:", str(e))
-
-async def sync_orders_periodically():
-    while True:
-        try:
-            await sync_orders()
-        except Exception as e:
-            print("[SYNC ERROR] Gagal sync:", str(e))
-        await asyncio.sleep(2)
-
-# Fungsi sinkronisasi jadwal ke backend
-async def sync_swap_schedules():
-    url = "http://localhost:8000/jadwal/bulk"
-    data = status_data.get("swap_schedules", [])
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=data, timeout=10.0)
-            response.raise_for_status()
-            print("[SYNC] swap_schedules synced:", response.json())
-        except Exception as e:
-            print("[SYNC ERROR] swap_schedules:", str(e))
-
-async def sync_swap_schedules_periodically():
-    while True:
-        try:
-            await sync_swap_schedules()
-        except Exception as e:
-            print("[SYNC ERROR] Gagal sync:", str(e))
-        await asyncio.sleep(2)
+# async def sync_battery_swap_system_data_periodically():
+#     while True:
+#         try:
+#             await sync_battery_swap_system_data()
+#         except Exception as e:
+#             print("[SYNC ERROR] Gagal sync:", str(e))
+#         await asyncio.sleep(5)
