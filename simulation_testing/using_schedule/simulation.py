@@ -2,12 +2,12 @@ import simpy
 import osmnx as ox
 import pandas as pd
 import random
-import time
+import time as time_module
 import numpy as np
 import requests
 from collections import defaultdict
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 
 import sys
@@ -127,7 +127,11 @@ JAKARTA_BOUNDS = {
 class Simulation:
     def __init__(self, jumlah_ev_motorbike, jumlah_stations, csv_path):
         self.env = simpy.Environment()
-        self.start_time = datetime.now(ZoneInfo("Asia/Jakarta"))
+        self.start_time = datetime.combine(
+            datetime.now(ZoneInfo("Asia/Jakarta")).date(),
+            time(0, 0),
+            tzinfo=ZoneInfo("Asia/Jakarta")
+        )
         self.jumlah_ev_motorbike = jumlah_ev_motorbike
         self.jumlah_stations = jumlah_stations
         self.fleet_ev_motorbikes = {}
@@ -136,7 +140,7 @@ class Simulation:
         self.battery_registry = {}
         self.battery_counter = [0]
         
-        # Scheduling components (from simulation.py)
+        # Event
         self.last_schedule_event = None
         self.sync_done_event = None
 
@@ -178,7 +182,7 @@ class Simulation:
     def get_current_speed(self):
         """Get current average speed based on time of day"""
         hour = self.get_current_hour()
-        return SPEED_BY_HOUR.get(hour, 25.0)  # Default to 25 km/h if not found
+        return SPEED_BY_HOUR.get(hour, 30.0)  # Default to 25 km/h if not found
 
     def get_current_order_rate(self):
         """Get current order generation rate (lambda for Poisson)"""
@@ -405,13 +409,13 @@ class Simulation:
             self.last_schedule_event = self.env.event()
             self.order_system.update_schedule_event(self.last_schedule_event)
 
-            time.sleep(0.5)
+            time_module.sleep(0.5)
             yield self.sync_done_event
 
 
-            start_get_schedule_time = time.time()
+            start_get_schedule_time = time_module.time()
             response = requests.get("http://localhost:8000/api/jadwal-penukaran")
-            end_get_schedule_time = time.time()
+            end_get_schedule_time = time_module.time()
 
             scheduling_time = (end_get_schedule_time - start_get_schedule_time)/60
 
