@@ -5,6 +5,11 @@ import asyncio
 import json
 import httpx
 
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+
 from simulation import Simulation, status_data
 
 app = FastAPI()

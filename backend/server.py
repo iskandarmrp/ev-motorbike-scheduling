@@ -167,46 +167,6 @@ async def get_jadwal_penukaran():
     finally:
         db.close()
 
-
-@app.post("/penjadwalan")
-async def penjadwalan(data: PenjadwalanRequest):
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, run_penjadwalan, data)
-    return result
-
-#
-def run_penjadwalan(data):
-    start = time.time()
-    fleet_ev_motorbikes = data.fleet_ev_motorbikes
-    battery_swap_station = data.battery_swap_station
-
-    update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station)
-    ev_dict = convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes)
-    station_list = convert_station_dict_to_list(battery_swap_station)
-
-    # schedule, score = simulated_annealing(
-    #     station_list,
-    #     ev_dict,
-    #     threshold=15,
-    #     charging_rate=100/240,
-    #     initial_temp=100.0,
-    #     alpha=0.95,
-    #     T_min=0.001,
-    #     max_iter=200
-    # )
-
-    schedule, score, history = alns_ev_scheduler(
-        battery_swap_station=station_list,
-        ev=ev_dict,
-        threshold=15,
-        charging_rate=100 / 240,
-        required_battery_threshold=80,
-        max_iter=200
-    )
-
-    execution_time = time.time() - start
-    return schedule, score, execution_time
-
 # Websocket
 connected_clients = set()
 

@@ -9,19 +9,22 @@ from collections import defaultdict
 import math
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.EVMotorBike import EVMotorBike
 from object.OrderSystem import OrderSystem
+from object.Order import Order
 from simulation_utils import (
     get_distance_and_duration,
-    ev_generator,
     apply_schedule_to_ev_fleet,
     add_and_save_swap_schedule,
     snap_to_road,
-    convert_ev_fleet_to_dict,
-    convert_station_to_dict,
-    send_penjadwalan_request
 )
 
 # Status
@@ -235,7 +238,7 @@ class Simulation:
         is_central = random.random() < 0.6  # 60% start in central areas
         lat, lon = self.generate_realistic_coordinates(is_central)
 
-        ev = EVMotorBike(  # Use EVMotorBike WITH scheduling support
+        ev = EVMotorBike(
             id=ev_id,
             max_speed_kmh=max_speed,
             battery_capacity=battery_capacity,
@@ -273,7 +276,6 @@ class Simulation:
             nearest_energy_to_bss = self.find_nearest_station_energy(order_destination_lat, order_destination_lon)
             
             if energy_needed + nearest_energy_to_bss < battery_now - 25:  # Keep 25% buffer
-                from object.Order import Order
                 order = Order(self.order_system.total_order + 1)
                 order.status = 'on going'
                 order.order_origin_lat = order_origin_lat
@@ -282,6 +284,8 @@ class Simulation:
                 order.order_destination_lon = order_destination_lon
                 order.created_at = (self.start_time + timedelta(minutes=self.env.now)).isoformat()
                 order.assigned_motorbike_id = ev.id
+                order.distance = order_distance
+                order.cost = order_distance * 3000
                 self.order_system.order_active.append(order)
                 self.order_system.total_order += 1
 
@@ -291,9 +295,6 @@ class Simulation:
                     "order_origin_lon": order_origin_lon,
                     "order_destination_lat": order_destination_lat,
                     "order_destination_lon": order_destination_lon,
-                    "distance_estimation": total_distance,
-                    "duration_estimation": (total_distance / 30) * 60,  # 30 km/h average
-                    "energy_estimaton": energy_needed
                 }
                         
                 ev.status = "heading to order"
@@ -418,10 +419,6 @@ class Simulation:
 
             print("Waktu penjadwalan:",self.env.now)
 
-            # if result is None:
-            #     print("[SCHEDULING ERROR] Penjadwalan gagal (timeout atau error lainnya).")
-            #     self.last_schedule_event.succeed()
-            #     continue  # lanjut ke siklus berikutnya
             if response.status_code != 200:
                 print("[SCHEDULING ERROR] Penjadwalan gagal (HTTP error).")
                 self.last_schedule_event.succeed()
