@@ -5,6 +5,12 @@ import math
 import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+
 from object.EVMotorBike import EVMotorBike
 from object.Order import Order
 

@@ -12,3 +12,5 @@ class Order:
         self.order_destination_lon = round(self.order_origin_lon + random.uniform(-0.1, 0.1), 6)
         self.created_at = None
         self.completed_at = None
+        self.distance = 0
+        self.cost = 0
