@@ -810,7 +810,7 @@ def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
         print(f"{'='*60}")
         
         sim = Simulation(num_drivers, num_stations, csv_path)
-        result = sim.run(max_time=1440)
+        result = sim.run(max_time=300)
         results.append(result)
         
         print(f"\nSimulation {run + 1} Results:")
@@ -950,15 +950,15 @@ if __name__ == '__main__':
     print(f"\nRunning 3 simulations with {num_drivers} drivers and {num_stations} stations...")
     
     # Run simulations
-    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=1)
+    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3)
     
     # Generate analysis
     generate_analysis_graphs(results)
     generate_station_waiting_histogram(results[0], 0)  # Ambil distribusi stasiun dari simulasi pertama
     generate_driver_waiting_histogram(results[0], 0)   # Ambil distribusi driver dari simulasi pertama
-    # generate_station_waiting_histogram(results[1], 1)  # Ambil distribusi stasiun dari simulasi pertama
-    # generate_driver_waiting_histogram(results[1], 1)   # Ambil distribusi driver dari simulasi pertama
-    # generate_station_waiting_histogram(results[2], 2)  # Ambil distribusi stasiun dari simulasi pertama
-    # generate_driver_waiting_histogram(results[2], 2)   # Ambil distribusi driver dari simulasi pertama
+    generate_station_waiting_histogram(results[1], 1)  # Ambil distribusi stasiun dari simulasi pertama
+    generate_driver_waiting_histogram(results[1], 1)   # Ambil distribusi driver dari simulasi pertama
+    generate_station_waiting_histogram(results[2], 2)  # Ambil distribusi stasiun dari simulasi pertama
+    generate_driver_waiting_histogram(results[2], 2)   # Ambil distribusi driver dari simulasi pertama
     
     print(f"\nAll simulations completed successfully!")

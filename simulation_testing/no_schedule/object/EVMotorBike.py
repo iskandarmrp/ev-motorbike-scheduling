@@ -10,33 +10,6 @@ from .Battery import Battery
 
 OSRM_URL = "http://localhost:5000"
 
-SPEED_BY_HOUR = {
-    0: 29.162,  # 23:30-00:30
-    1: 29.486,  # 00:30-01:30
-    2: 29.607,  # 01:30-02:30
-    3: 29.649,  # 02:30-03:30
-    4: 29.65,   # 03:30-04:30
-    5: 29.701,  # 04:30-05:30
-    6: 29.308,  # 05:30-06:30
-    7: 28.401,  # 06:30-07:30
-    8: 27.072,  # 07:30-08:30
-    9: 26.791,  # 08:30-09:30
-    10: 26.555, # 09:30-10:30
-    11: 26.194, # 10:30-11:30
-    12: 26.29,  # 11:30-12:30
-    13: 26.366, # 12:30-13:30
-    14: 25.905, # 13:30-14:30
-    15: 25.749, # 14:30-15:30
-    16: 25.431, # 15:30-16:30
-    17: 24.382, # 16:30-17:30
-    18: 24.08,  # 17:30-18:30
-    19: 25.225, # 18:30-19:30
-    20: 27.121, # 19:30-20:30
-    21: 28.168, # 20:30-21:30
-    22: 27.453, # 21:30-22:30
-    23: 28.283  # 22:30-23:30
-}
-
 def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=3):
     """
     Get route with retry logic and fallback to mock implementation
@@ -50,10 +23,10 @@ def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lo
             if data["code"] == "Ok":
                 route_data = data["routes"][0]
                 distance_km = max(round(route_data["distance"] / 1000, 2), 0.000001)
-                duration_hour = max(round(route_data["duration"] / (60 * 2), 2), 0.000001)
+                duration_min = max(round(route_data["duration"] / (60 * 2), 2), 0.000001)
                 polyline_str = route_data["geometry"]
                 decoded_polyline = polyline.decode(polyline_str)
-                return distance_km, duration_hour, decoded_polyline
+                return distance_km, duration_min, decoded_polyline
             else:
                 print(f"OSRM route error on attempt {attempt + 1}: {data['code']}")
                 
@@ -123,7 +96,6 @@ class EVMotorBike:
         self.travel_time = []
         self.order_schedule = {}
         self.swap_schedule = {}
-        self.daily_income = 0
 
         self.battery.id = copy.deepcopy(battery_counter[0])
         self.battery.location = 'motor'
@@ -131,7 +103,7 @@ class EVMotorBike:
         battery_registry[battery_counter[0]] = self.battery
         battery_counter[0] += 1
 
-    def drive(self, env, battery_swap_station, swap_schedules, order_system, start_time, simulation):
+    def drive(self, env, battery_swap_station, order_system, start_time):
         while True:
             if self.online_status == 'online':
                 if self.status == 'idle':
@@ -149,17 +121,8 @@ class EVMotorBike:
                     idx_now = 0
 
                     while idx_now < route_length - 1:
-                        # Durasi berdasarkan jam sekarang
-
-                        # Kecepatan sekarang
-                        hour = int(env.now // 60) % 24
-                        speed = SPEED_BY_HOUR.get(hour, 30.0)
-
-                        duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
-
-                        # Hitung energi per menit
-                        energy_per_minute = distance / (duration_now * 60)
-                        progress_per_minute = route_length / duration_now
+                        energy_per_minute = round((distance * (100 / 60)), 2) / duration
+                        progress_per_minute = route_length / duration
                         idx_now += progress_per_minute
                         index_int = int(idx_now)
 
@@ -169,11 +132,7 @@ class EVMotorBike:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = self.order_schedule.get("order_origin_lat")
                             self.current_lon = self.order_schedule.get("order_origin_lon")
-                            
-                            # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
-
-                            self.battery.battery_now -= energy_per_minute * last_minutes * degradation_factor
+                            self.battery.battery_now -= energy_per_minute * last_minutes
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
@@ -186,11 +145,7 @@ class EVMotorBike:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = lat_now
                             self.current_lon = lon_now
-
-                            # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
-
-                            self.battery.battery_now -= energy_per_minute * degradation_factor
+                            self.battery.battery_now -= energy_per_minute
                             yield env.timeout(1)
 
                             if self.swap_schedule:
@@ -208,17 +163,8 @@ class EVMotorBike:
                     idx_now = 0
 
                     while idx_now < route_length - 1:
-                        # Durasi berdasarkan jam sekarang
-
-                        # Kecepatan sekarang
-                        hour = int(env.now // 60) % 24
-                        speed = SPEED_BY_HOUR.get(hour, 30.0)
-
-                        duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
-
-                        # Hitung energi per menit
-                        energy_per_minute = distance / (duration_now * 60)
-                        progress_per_minute = route_length / duration_now
+                        energy_per_minute = round((distance * (100 / 60)), 2) / duration
+                        progress_per_minute = route_length / duration
                         idx_now += progress_per_minute
                         index_int = int(idx_now)
 
@@ -228,11 +174,7 @@ class EVMotorBike:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = self.order_schedule.get("order_destination_lat")
                             self.current_lon = self.order_schedule.get("order_destination_lon")
-
-                            # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
-
-                            self.battery.battery_now -= energy_per_minute * last_minutes * degradation_factor
+                            self.battery.battery_now -= energy_per_minute * last_minutes
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
@@ -248,7 +190,6 @@ class EVMotorBike:
                                 if order.id == order_id:
                                     order.status = "done"
                                     order.completed_at = (start_time + timedelta(minutes=env.now)).isoformat()
-                                    self.daily_income += order.cost
                                     order_system.order_active.remove(order)
                                     order_system.order_done.append(order)
                                     break
@@ -257,11 +198,7 @@ class EVMotorBike:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = lat_now
                             self.current_lon = lon_now
-                            
-                            # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
-
-                            self.battery.battery_now -= energy_per_minute * degradation_factor
+                            self.battery.battery_now -= energy_per_minute
                             yield env.timeout(1)
 
                             if self.swap_schedule:
@@ -280,17 +217,8 @@ class EVMotorBike:
                     idx_now = 0
 
                     while idx_now < route_length - 1:
-                        # Durasi berdasarkan jam sekarang
-
-                        # Kecepatan sekarang
-                        hour = int(env.now // 60) % 24
-                        speed = SPEED_BY_HOUR.get(hour, 30.0)
-
-                        duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
-
-                        # Hitung energi per menit
-                        energy_per_minute = distance / (duration_now * 60)
-                        progress_per_minute = route_length / duration_now
+                        energy_per_minute = round((distance * (100 / 60)), 2) / duration
+                        progress_per_minute = route_length / duration
                         idx_now += progress_per_minute
                         index_int = int(idx_now)
 
@@ -300,11 +228,7 @@ class EVMotorBike:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = battery_swap_station.get(battery_station_id).lat
                             self.current_lon = battery_swap_station.get(battery_station_id).lon
-                            
-                            # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
-
-                            self.battery.battery_now -= energy_per_minute * last_minutes * degradation_factor
+                            self.battery.battery_now -= energy_per_minute * last_minutes
                             yield env.timeout(last_minutes)
 
                             if self.swap_schedule:
@@ -317,11 +241,7 @@ class EVMotorBike:
                             lat_now, lon_now = route_polyline[index_int]
                             self.current_lat = lat_now
                             self.current_lon = lon_now
-                                                        
-                            # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
-
-                            self.battery.battery_now -= energy_per_minute * degradation_factor
+                            self.battery.battery_now -= energy_per_minute
                             yield env.timeout(1)
 
                             if self.swap_schedule:
@@ -335,19 +255,14 @@ class EVMotorBike:
                     slot_index = self.swap_schedule["slot"]
                     station = battery_swap_station.get(battery_station_id)
 
-                    print("slot index",slot_index)
-                    print("panjang slot", len(station.slots))
                     while station.slots[slot_index].battery_now < 80:
                         yield env.timeout(1)
 
-                    self.daily_income -= 5000
-                    simulation.station_waiting_times[self.swap_schedule["battery_station"]].append(self.swap_schedule["waiting_time"])
-                    simulation.driver_waiting_times[self.id].append(self.swap_schedule["waiting_time"])
-                    self.battery_swap(env, battery_swap_station, swap_schedules)
+                    self.battery_swap(env, battery_swap_station)
             else:
                 yield env.timeout(1)
 
-    def battery_swap(self, env, battery_swap_station, swap_schedules):
+    def battery_swap(self, env, battery_swap_station):
         station_id = self.swap_schedule["battery_station"]
         slot_index = self.swap_schedule["slot"]
 
@@ -366,11 +281,4 @@ class EVMotorBike:
         self.battery = slot_battery
 
         self.status = 'idle'
-
-        swap_id = self.swap_schedule.get("swap_id")
-        current_schedule = swap_schedules.get(swap_id)
-
-        if current_schedule:
-            current_schedule["status"] = "done"
-
         self.swap_schedule = {}

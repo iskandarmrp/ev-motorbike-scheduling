@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from database.database import Base, engine, seed_admin, SessionLocal
 from database.routers import jadwal, pengemudi_dan_kendaraan, baterai, admin, stasiun_penukaran_baterai, order
-from database.models import Admin
+from database.models import Admin, Baterai, Kendaraan, Pengemudi, Order, StasiunPenukaranBaterai, SlotStasiunPenukaranBaterai, JadwalPenukaran
 from database import crud
 from problem_solving_agent.utils import update_energy_distance_and_travel_time_all, convert_fleet_ev_motorbikes_to_dict, convert_station_dict_to_list, get_fleet_dict_and_station_list
 from problem_solving_agent.algorithm import simulated_annealing, alns_ev_scheduler
@@ -166,6 +166,28 @@ async def get_jadwal_penukaran():
         }
     finally:
         db.close()
+
+@app.delete("/api/clear-all-data")
+def clear_all_data():
+    db = SessionLocal()
+    try:
+        # Urutan penting karena ada dependensi foreign key
+        db.query(JadwalPenukaran).delete()
+        db.query(SlotStasiunPenukaranBaterai).delete()
+        db.query(StasiunPenukaranBaterai).delete()
+        db.query(Order).delete()
+        db.query(Pengemudi).delete()
+        db.query(Kendaraan).delete()
+        db.query(Baterai).delete()
+
+        db.commit()
+        return {"message": "Semua data berhasil dihapus, kecuali data admin."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Gagal menghapus data: {str(e)}")
+    finally:
+        db.close()
+
 
 # Websocket
 connected_clients = set()
