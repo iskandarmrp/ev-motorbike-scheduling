@@ -126,5 +126,3 @@ def apply_schedule_to_ev_fleet(fleet_ev_motorbikes, solution):
         if ev_id in solution:
             if solution[ev_id].get("assigned"):
                 ev.swap_schedule = solution[ev_id]
-            else:
-                ev.swap_schedule = {}

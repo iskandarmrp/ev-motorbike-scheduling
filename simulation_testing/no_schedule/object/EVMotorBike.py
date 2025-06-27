@@ -8,6 +8,33 @@ from object.Battery import Battery
 
 OSRM_URL = "http://localhost:5000"
 
+SPEED_BY_HOUR = {
+    0: 29.162,  # 23:30-00:30
+    1: 29.486,  # 00:30-01:30
+    2: 29.607,  # 01:30-02:30
+    3: 29.649,  # 02:30-03:30
+    4: 29.65,   # 03:30-04:30
+    5: 29.701,  # 04:30-05:30
+    6: 29.308,  # 05:30-06:30
+    7: 28.401,  # 06:30-07:30
+    8: 27.072,  # 07:30-08:30
+    9: 26.791,  # 08:30-09:30
+    10: 26.555, # 09:30-10:30
+    11: 26.194, # 10:30-11:30
+    12: 26.29,  # 11:30-12:30
+    13: 26.366, # 12:30-13:30
+    14: 25.905, # 13:30-14:30
+    15: 25.749, # 14:30-15:30
+    16: 25.431, # 15:30-16:30
+    17: 24.382, # 16:30-17:30
+    18: 24.08,  # 17:30-18:30
+    19: 25.225, # 18:30-19:30
+    20: 27.121, # 19:30-20:30
+    21: 28.168, # 20:30-21:30
+    22: 27.453, # 21:30-22:30
+    23: 28.283  # 22:30-23:30
+}
+
 def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=3):
     """Get route with retry logic and fallback to mock implementation"""
     for attempt in range(max_retries):
@@ -84,10 +111,11 @@ class EVMotorbike:
         self.travel_time = []
         self.order_schedule = {}
         self.swap_schedule = {}
+
+        self.last_status_before_swap = None
         
         # Enhanced attributes
         self.daily_income = 0
-        self.total_swaps = 0
         self.total_orders_completed = 0
         self.waiting_start_time = None
         self.queue_position = None  # Track position in station queue
@@ -122,6 +150,7 @@ class EVMotorbike:
                             "travel_time": 0,
                             "is_critical": True  # Mark as critical swap
                         }
+                        self.last_status_before_swap = copy.deepcopy(self.status)
                         self.status = 'heading to bss'
                         print(f"[{env.now:.0f}min] EV {self.id} heading to station {nearest_station_id} for CRITICAL battery swap")
 
@@ -148,8 +177,17 @@ class EVMotorbike:
                 idx_now = 0
 
                 while idx_now < route_length - 1:
-                    energy_per_minute = round((distance * (100 / 60)), 2) / duration
-                    progress_per_minute = route_length / duration
+                    # Durasi berdasarkan jam sekarang
+
+                    # Kecepatan sekarang
+                    hour = int(env.now // 60) % 24
+                    speed = SPEED_BY_HOUR.get(hour, 30.0)
+
+                    duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
+
+                    # Hitung energi per menit
+                    energy_per_minute = (distance * 100 / 65) / duration_now # Ubah ke persentase baterai
+                    progress_per_minute = route_length / duration_now
                     idx_now += progress_per_minute
                     index_int = int(idx_now)
 
@@ -159,7 +197,10 @@ class EVMotorbike:
                         lat_now, lon_now = route_polyline[index_int]
                         self.current_lat = self.order_schedule.get("order_origin_lat")
                         self.current_lon = self.order_schedule.get("order_origin_lon")
-                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes)
+                        # Pengurangan baterai dengan degradasi cycle
+                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        
+                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes * degradation_factor)
                         yield env.timeout(last_minutes)
 
                         self.status = 'on order'
@@ -168,7 +209,10 @@ class EVMotorbike:
                         lat_now, lon_now = route_polyline[index_int]
                         self.current_lat = lat_now
                         self.current_lon = lon_now
-                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute)
+                        # Pengurangan baterai dengan degradasi cycle
+                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+
+                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * degradation_factor)
                         yield env.timeout(1)
 
                         # Check if battery became critical during travel
@@ -193,8 +237,21 @@ class EVMotorbike:
                 idx_now = 0
 
                 while idx_now < route_length - 1:
-                    energy_per_minute = round((distance * (100 / 60)), 2) / duration
-                    progress_per_minute = route_length / duration
+                    # Durasi berdasarkan jam sekarang
+
+                    # Kecepatan sekarang
+                    hour = int(env.now // 60) % 24
+                    speed = SPEED_BY_HOUR.get(hour, 30.0)
+
+                    duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
+                    # print("distance", distance)
+                    # print("durasi now", duration_now)
+
+                    # Hitung energi per menit
+                    energy_per_minute = (distance * 100 / 65) / duration_now # Ubah ke persentase baterai
+                    # print("Energi per menit", energy_per_minute)
+                    progress_per_minute = route_length / duration_now
+                    # print("Progress per menit", progress_per_minute)
                     idx_now += progress_per_minute
                     index_int = int(idx_now)
 
@@ -204,7 +261,10 @@ class EVMotorbike:
                         lat_now, lon_now = route_polyline[index_int]
                         self.current_lat = self.order_schedule.get("order_destination_lat")
                         self.current_lon = self.order_schedule.get("order_destination_lon")
-                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes)
+                        # Pengurangan baterai dengan degradasi cycle
+                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        
+                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes * degradation_factor)
                         yield env.timeout(last_minutes)
 
                         # Complete the order and add income
@@ -219,7 +279,7 @@ class EVMotorbike:
                                 order.completed_at = (start_time + timedelta(minutes=env.now)).isoformat()
                                 order_system.order_active.remove(order)
                                 order_system.order_done.append(order)
-                                print(f"[{env.now:.0f}min] EV {self.id} completed order {order_id} - Earned: {order.cost} - Daily income: {self.daily_income}")
+                                print(f"[{env.now:.0f}min] EV {self.id} completed order {order_id} - Earned: {order.cost} - Daily income: {self.daily_income} - Baterai sekarang: {self.battery.battery_now}")
                                 break
                         self.order_schedule = {}
                         self.status = 'idle'
@@ -228,7 +288,10 @@ class EVMotorbike:
                         lat_now, lon_now = route_polyline[index_int]
                         self.current_lat = lat_now
                         self.current_lon = lon_now
-                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute)
+                        # Pengurangan baterai dengan degradasi cycle
+                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+
+                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * degradation_factor)
                         yield env.timeout(1)
 
                         # Check if battery became critical during order
@@ -248,8 +311,17 @@ class EVMotorbike:
                 idx_now = 0
 
                 while idx_now < route_length - 1:
-                    energy_per_minute = round((distance * (100 / 60)), 2) / duration
-                    progress_per_minute = route_length / duration
+                    # Durasi berdasarkan jam sekarang
+
+                    # Kecepatan sekarang
+                    hour = int(env.now // 60) % 24
+                    speed = SPEED_BY_HOUR.get(hour, 30.0)
+
+                    duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
+
+                    # Hitung energi per menit
+                    energy_per_minute = (distance * 100 / 65) / duration_now # Ubah ke persentase baterai
+                    progress_per_minute = route_length / duration_now
                     idx_now += progress_per_minute
                     index_int = int(idx_now)
 
@@ -259,20 +331,25 @@ class EVMotorbike:
                         lat_now, lon_now = route_polyline[index_int]
                         self.current_lat = battery_swap_station.get(battery_station_id).lat
                         self.current_lon = battery_swap_station.get(battery_station_id).lon
-                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes)
+                        # Pengurangan baterai dengan degradasi cycle
+                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        
+                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes * degradation_factor)
                         yield env.timeout(last_minutes)
 
                         # Add to station queue
                         simulation.add_to_station_queue(self.id, battery_station_id)
                         self.status = 'waiting for battery'
-                        self.waiting_start_time = env.now
                         print(f"[{env.now:.0f}min] EV {self.id} arrived at station {battery_station_id} - Battery: {self.battery.battery_now:.1f}% - Queue position: {simulation.get_queue_position(self.id, battery_station_id)}")
                         break
                     else:
                         lat_now, lon_now = route_polyline[index_int]
                         self.current_lat = lat_now
                         self.current_lon = lon_now
-                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute)
+                        # Pengurangan baterai dengan degradasi cycle
+                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+
+                        self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * degradation_factor)
                         yield env.timeout(1)
                         
             elif self.status == 'waiting for battery':
@@ -295,17 +372,19 @@ class EVMotorbike:
                         print(f"[{env.now:.0f}min] EV {self.id} starting battery swap - Available battery: {available_battery.battery_now:.1f}%")
                     else:
                         # No suitable battery available, wait
+                        print(f"[{env.now:.0f}min] EV {self.id} lagi nunggu baterai")
                         yield env.timeout(1)
                 else:
                     # Not next in queue, just wait
+                    print(f"[{env.now:.0f}min] EV {self.id} lagi ngantri")
                     yield env.timeout(1)
                     
             elif self.status == 'battery swap':
                 # Perform the actual battery swap
                 yield env.timeout(2)  # 2 minutes for swap process
                 self.battery_swap(env, battery_swap_station, simulation)
-        else:
-            yield env.timeout(1)
+            else:
+                yield env.timeout(1)
 
     def battery_swap(self, env, battery_swap_station, simulation):
         """Perform battery swap and deduct cost"""
@@ -339,13 +418,14 @@ class EVMotorbike:
 
         # Deduct swap cost from daily income
         self.daily_income -= 5000
-        self.total_swaps += 1
 
         # Remove from queue
         simulation.remove_from_station_queue(self.id, station_id)
         
         # Update waiting time tracking
         if self.waiting_start_time is not None:
+            print("start waiting time", self.waiting_start_time)
+            print("env sekarang", env.now)
             waiting_time = env.now - self.waiting_start_time - 2
             if waiting_time > 0:
                 simulation.waiting_time_tracking.append(waiting_time)
@@ -353,38 +433,17 @@ class EVMotorbike:
                 simulation.driver_waiting_times[self.id].append(waiting_time)
             simulation.update_waiting_driver(self.id, waiting_time)
             self.waiting_start_time = None
+            print("Waiting time", waiting_time)
         self.waiting_start_time = None
 
         print(f"[{env.now:.0f}min] EV {self.id} completed battery swap - Old: {ev_battery.battery_now:.1f}% -> New: {self.battery.battery_now:.1f}% - Daily income: {self.daily_income}")
 
-        # Determine next status based on whether there's an active order
-        if self.order_schedule:
-            # Resume order - determine if heading to pickup or delivery
-            if 'order_origin_lat' in self.order_schedule:
-                # Check if we're at the pickup location
-                pickup_distance = self.quick_distance_estimate(
-                    self.current_lat, self.current_lon,
-                    self.order_schedule["order_origin_lat"], self.order_schedule["order_origin_lon"]
-                )
-                
-                if pickup_distance < 0.1:  # Very close to pickup (100m)
-                    self.status = 'on order'  # Go directly to delivery
-                    print(f"[{env.now:.0f}min] EV {self.id} resuming order - going to delivery")
-                else:
-                    self.status = 'heading to order'  # Still need to pickup
-                    print(f"[{env.now:.0f}min] EV {self.id} resuming order - going to pickup")
-            else:
-                self.status = 'idle'
-        else:
-            self.status = 'idle'
+        self.status = copy.deepcopy(self.last_status_before_swap)
+        self.last_status_before_swap = None
+
+        print(f"[{env.now:.0f}min] EV kembali ke status nya setelah swap: {self.status}")
+
+        if self.status == "idle" and self.order_schedule:
+            self.status = "heading to order"
 
         self.swap_schedule = {}
-
-    def quick_distance_estimate(self, lat1, lon1, lat2, lon2):
-        """Quick distance estimation for the EV class"""
-        R = 6371
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        return max(R * c, 0.000001)

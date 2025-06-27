@@ -14,11 +14,12 @@ import os
 sys.path.append(os.path.dirname(__file__))
 
 # Import the original classes and modify them
-from object.EVMotorBike import EVMotorBike
+from object.EVMotorbike import EVMotorbike
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.OrderSystem import OrderSystem
-from simulation_utils import snap_to_road
+from object.Order import Order
+from simulation_utils import snap_to_road, get_distance_and_duration
 
 OSRM_URL = "http://localhost:5000"
 
@@ -67,7 +68,20 @@ ORDER_LAMBDA_BY_HOUR = {
 #     23: 210   # 22:30-23:30
 # }
 
-# Jakarta area bounds for random station generation
+# Central Jakarta / South Jakarta hotspots (60% of orders)
+CENTRAL_SOUTH_JAKARTA_BOUNDS = {
+    'lat_min': -6.25,
+    'lat_max': -6.15,
+    'lon_min': 106.78,
+    'lon_max': 106.85
+}
+
+# Manggarai and Setiabudi concentration points
+HOTSPOT_CENTERS = [
+    {'lat': -6.2088, 'lon': 106.8456, 'name': 'Manggarai'},  # Manggarai Station area
+    {'lat': -6.2088, 'lon': 106.8200, 'name': 'Setiabudi'},  # Setiabudi area
+]
+
 JAKARTA_BOUNDS = {
     'lat_min': -6.4, 'lat_max': -6.1, 'lon_min': 106.7, 'lon_max': 107.0
 }
@@ -100,6 +114,15 @@ class Simulation:
         # Load CSV and setup stations
         df = pd.read_csv(csv_path)
         self.setup_battery_swap_station(df)
+
+    def get_current_hour(self):
+        """Get current simulation hour (0-23)"""
+        return int(self.env.now // 60) % 24
+
+    def get_current_order_rate(self):
+        """Get current order generation rate"""
+        hour = self.get_current_hour()
+        return ORDER_LAMBDA_BY_HOUR.get(hour, 10)
 
     # Station queue management methods
     def add_to_station_queue(self, ev_id, station_id):
@@ -157,9 +180,6 @@ class Simulation:
         best_level = 0
         
         for slot_idx, battery in enumerate(station.slots):
-            # Check if battery is suitable:
-            # 1. Battery level >= 80%
-            # 2. Not the EV's own battery
             if (battery.battery_now >= 80 and 
                 battery.id != ev.battery.id and 
                 battery.battery_now > best_level):
@@ -172,7 +192,7 @@ class Simulation:
     def update_waiting_driver(self, ev_id, actual_waiting_time):
         """Update waiting driver with actual waiting time"""
         if ev_id in self.waiting_drivers:
-            self.waiting_drivers[ev_id] = actual_waiting_time
+            self.waiting_drivers[ev_id] = self.waiting_drivers[ev_id] + actual_waiting_time
             print(f"EV {ev_id} waited {actual_waiting_time:.1f} minutes for battery swap")
 
     def get_current_waiting_count(self):
@@ -253,10 +273,53 @@ class Simulation:
             ev = self.ev_generator(i)
             self.fleet_ev_motorbikes[i] = ev
 
+    def generate_realistic_coordinates(self, is_central_south=True):
+        """Generate coordinates based on geographic distribution"""
+        if is_central_south:
+            # 60% chance - Central/South Jakarta with hotspot concentration
+            if random.random() < 0.4:  # 40% of central orders near hotspots
+                hotspot = random.choice(HOTSPOT_CENTERS)
+                # Generate coordinates within 2km of hotspot
+                lat_offset = random.uniform(-0.018, 0.018)  # ~2km
+                lon_offset = random.uniform(-0.018, 0.018)
+                lat = hotspot['lat'] + lat_offset
+                lon = hotspot['lon'] + lon_offset
+            else:
+                # Random within Central/South Jakarta bounds
+                lat = random.uniform(CENTRAL_SOUTH_JAKARTA_BOUNDS['lat_min'], 
+                                   CENTRAL_SOUTH_JAKARTA_BOUNDS['lat_max'])
+                lon = random.uniform(CENTRAL_SOUTH_JAKARTA_BOUNDS['lon_min'], 
+                                   CENTRAL_SOUTH_JAKARTA_BOUNDS['lon_max'])
+        else:
+            # 40% chance - Other Jakarta areas
+            lat = round(random.uniform(-6.4, -6.125), 6)
+            lon = round(random.uniform(106.7, 107.0), 6)
+        
+        return snap_to_road(lat, lon)
+    
+    def generate_order_distance(self):
+        """Generate realistic order distance (1-10km, mostly around 5km)"""
+        # Use normal distribution centered at 5km with std dev of 2km
+        distance = np.random.normal(5.0, 2.0)
+        # Clamp between 1-10km
+        return max(1.0, min(10.0, distance))
+
+    def generate_nearby_coordinates(self, lat, lon, max_distance_km=2.0):
+        """Generate koordinat dalam radius tertentu dari lat/lon (dalam km)"""
+        bearing = random.uniform(0, 2 * math.pi)
+        distance = random.uniform(0, max_distance_km)
+        
+        lat_offset = (distance / 111.0) * math.cos(bearing)
+        lon_offset = (distance / (111.0 * math.cos(math.radians(lat)))) * math.sin(bearing)
+        
+        return lat + lat_offset, lon + lon_offset
+
     def ev_generator(self, ev_id):
         """Generate enhanced EV with daily_income"""
-        max_speed = 60
+        max_speed = 60 # Max Speed
         battery_capacity = 100
+
+        # Battery Level
         battery_now = random.choices(
             [random.randint(80, 100), random.randint(50, 79), random.randint(20, 49)],
             weights=[0.4, 0.4, 0.2]
@@ -267,7 +330,7 @@ class Simulation:
         is_central = random.random() < 0.6
         lat, lon = self.generate_realistic_coordinates(is_central)
 
-        ev = EVMotorBike(
+        ev = EVMotorbike(
             id=ev_id,
             max_speed_kmh=max_speed,
             battery_capacity=battery_capacity,
@@ -279,40 +342,67 @@ class Simulation:
             battery_counter=self.battery_counter
         )
 
+        # Initial Order
+        if random.random() < 0.05 and battery_now > 30:  # Only 5% start with orders
+            order_distance = self.generate_order_distance()
+            
+            # Generate order coordinates
+            order_origin_lat, order_origin_lon = self.generate_nearby_coordinates(lat, lon, max_distance_km=2.0)
+            order_origin_lat, order_origin_lon = snap_to_road(order_origin_lat, order_origin_lon)
+            
+            # Calculate destination based on order distance
+            # Random direction for destination
+            bearing = random.uniform(0, 2 * math.pi)
+            lat_offset = (order_distance / 111.0) * math.cos(bearing)  # 1 degree ≈ 111km
+            lon_offset = (order_distance / (111.0 * math.cos(math.radians(order_origin_lat)))) * math.sin(bearing)
+            
+            order_destination_lat = order_origin_lat + lat_offset
+            order_destination_lon = order_origin_lon + lon_offset
+            order_destination_lat, order_destination_lon = snap_to_road(order_destination_lat, order_destination_lon)
+            
+            # Calculate energy needed (100% battery = 65km)
+            distance_to_order, duration_to_order = get_distance_and_duration(lat, lon, order_origin_lat, order_origin_lon)
+            total_distance = distance_to_order + order_distance
+            energy_needed = (total_distance / 65.0) * 100  # Convert to battery percentage
+            
+            # Find nearest station energy requirement
+            nearest_energy_to_bss = self.find_nearest_station_energy(order_destination_lat, order_destination_lon)
+            
+            if energy_needed + nearest_energy_to_bss < (battery_now * (100 - ev.battery.cycle * 0.025)/100) - 10:  # Keep 10% buffer
+                order = Order(self.order_system.total_order + 1)
+                order.status = 'on going'
+                order.order_origin_lat = order_origin_lat
+                order.order_origin_lon = order_origin_lon
+                order.order_destination_lat = order_destination_lat
+                order.order_destination_lon = order_destination_lon
+                order.created_at = (self.start_time + timedelta(minutes=self.env.now)).isoformat()
+                order.assigned_motorbike_id = ev.id
+                order.distance = order_distance
+                order.cost = order_distance * 3000
+                self.order_system.order_active.append(order)
+                self.order_system.total_order += 1
+
+                ev.order_schedule = {
+                    "order_id": order.id,
+                    "order_origin_lat": order_origin_lat,
+                    "order_origin_lon": order_origin_lon,
+                    "order_destination_lat": order_destination_lat,
+                    "order_destination_lon": order_destination_lon,
+                }
+                        
+                ev.status = "heading to order"
+
         return ev
-
-    def generate_realistic_coordinates(self, is_central_south=True):
-        """Generate coordinates based on geographic distribution"""
-        if is_central_south:
-            if random.random() < 0.4:
-                # Near hotspots
-                hotspot = random.choice([
-                    {'lat': -6.2088, 'lon': 106.8456},  # Manggarai
-                    {'lat': -6.2088, 'lon': 106.8200},  # Setiabudi
-                ])
-                lat_offset = random.uniform(-0.018, 0.018)
-                lon_offset = random.uniform(-0.018, 0.018)
-                lat = hotspot['lat'] + lat_offset
-                lon = hotspot['lon'] + lon_offset
-            else:
-                # Central/South Jakarta bounds
-                lat = random.uniform(-6.25, -6.15)
-                lon = random.uniform(106.78, 106.85)
-        else:
-            # Other Jakarta areas
-            lat = round(random.uniform(-6.4, -6.125), 6)
-            lon = round(random.uniform(106.7, 107.0), 6)
-        
-        return snap_to_road(lat, lon)
-
-    def get_current_hour(self):
-        """Get current simulation hour (0-23)"""
-        return int(self.env.now // 60) % 24
-
-    def get_current_order_rate(self):
-        """Get current order generation rate"""
-        hour = self.get_current_hour()
-        return ORDER_LAMBDA_BY_HOUR.get(hour, 10)
+    
+    def find_nearest_station_energy(self, lat, lon):
+        """Find energy needed to reach nearest battery station"""
+        min_energy = float('inf')
+        for station in self.battery_swap_station.values():
+            distance, duration = get_distance_and_duration(lat,lon, station.lat, station.lon)
+            energy = (distance / 65.0) * 100  # Convert to battery percentage
+            if energy < min_energy:
+                min_energy = energy
+        return min_energy
 
     def find_nearest_station(self, ev):
         """Find nearest battery swap station"""
@@ -320,7 +410,7 @@ class Simulation:
         min_distance = float('inf')
         
         for station_id, station in self.battery_swap_station.items():
-            distance = self.quick_distance_estimate(
+            distance, duration = get_distance_and_duration(
                 ev.current_lat, ev.current_lon,
                 station.lat, station.lon
             )
@@ -348,15 +438,6 @@ class Simulation:
             for station_id, load in current_loads.items():
                 self.station_queues[station_id].append(load)
 
-    def quick_distance_estimate(self, lat1, lon1, lat2, lon2):
-        """Quick distance estimation using simplified haversine"""
-        R = 6371
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        return max(R * c, 0.000001)
-
     def monitor_status(self):
         """Monitor system status"""
         while True:
@@ -381,14 +462,11 @@ class Simulation:
             
             # Get current waiting statistics
             current_waiting = self.get_current_waiting_count()
-            current_station_loads = self.get_current_station_loads()
-            avg_current_load = sum(current_station_loads.values()) / len(current_station_loads) if current_station_loads else 0
             
             print(f"EV Status: {status_counts}")
             print(f"Low Battery EVs (≤20%): {low_battery_count}")
             print(f"Average Daily Income: {avg_income:.0f}")
             print(f"Currently Waiting at Stations: {current_waiting}")
-            print(f"Average Current Station Load: {avg_current_load:.1f}")
             print(f"Total Drivers Who Have Waited: {len(self.waiting_time_tracking)}")
             print(f"Average Waiting time: {sum(self.waiting_time_tracking) / len(self.waiting_time_tracking) if len(self.waiting_time_tracking) > 0 else 0}")
             print(f"Orders - Searching: {len(self.order_system.order_search_driver)}, "
@@ -445,26 +523,15 @@ class Simulation:
         else:
             avg_waiting_time = 0
         
-        # Average of drivers who accumulate at one battery swap station
-        station_load_averages = []
-        for station_id, loads in self.station_queues.items():
-            if loads:
-                avg_load = sum(loads) / len(loads)
-                station_load_averages.append(avg_load)
-        
-        avg_station_load = sum(station_load_averages) / len(station_load_averages) if station_load_averages else 0
-        
         print(f"\nFinal Metrics Calculation:")
         print(f"  Total drivers who waited: {num_drivers_waiting}")
         print(f"  Total waiting time: {sum(self.waiting_time_tracking) if self.waiting_time_tracking else 0:.1f} minutes")
         print(f"  Average waiting time: {avg_waiting_time:.1f} minutes")
-        print(f"  Average station load: {avg_station_load:.2f}")
         
         return {
             'avg_operating_profit': avg_operating_profit,
             'num_drivers_waiting': num_drivers_waiting,
             'avg_waiting_time': avg_waiting_time,
-            'avg_station_load': avg_station_load,
             'station_waiting_times': dict(self.station_waiting_times),  # convert defaultdict to dict
             'driver_waiting_times': dict(self.driver_waiting_times),
         }
@@ -487,18 +554,16 @@ def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
         print(f"  Average Operating Profit: {result['avg_operating_profit']:.2f}")
         print(f"  Number of Drivers Waiting: {result['num_drivers_waiting']}")
         print(f"  Average Waiting Time: {result['avg_waiting_time']:.2f} minutes")
-        print(f"  Average Station Load: {result['avg_station_load']:.2f}")
     
     return results
 
 def generate_analysis_graphs(results):
     """Generate comprehensive analysis graphs"""
-    metrics = ['avg_operating_profit', 'num_drivers_waiting', 'avg_waiting_time', 'avg_station_load']
+    metrics = ['avg_operating_profit', 'num_drivers_waiting', 'avg_waiting_time']
     titles = [
         'Average Operating Profit of Drivers',
         'Number of Drivers Waiting at Swap Stations',
         'Average Waiting Time of Drivers at Swap Stations (minutes)',
-        'Average Drivers Accumulating at One Battery Swap Station'
     ]
     
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
@@ -527,7 +592,7 @@ def generate_analysis_graphs(results):
         axes[i].grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('enhanced_simulation_analysis_fixed.png', dpi=300, bbox_inches='tight')
+    plt.savefig('Simulation without Schedule Graph.png', dpi=300, bbox_inches='tight')
     plt.show()
     
     # Print summary
@@ -552,7 +617,7 @@ def generate_station_waiting_histogram(result, index=0):
 
     station_waiting_times = result.get("station_waiting_times", {})
     if not station_waiting_times:
-        print(f"❌ No station waiting time data available for Simulasi {index+1}.")
+        print(f"No station waiting time data available for Simulasi {index+1}.")
         return
 
     avg_station_waiting = [np.mean(v) for v in station_waiting_times.values() if v]
@@ -567,7 +632,7 @@ def generate_station_waiting_histogram(result, index=0):
 
     filename = f"station_waiting_Simulasi_{index+1}.png"
     plt.savefig(filename, dpi=300, bbox_inches='tight')
-    print(f"✅ Grafik disimpan sebagai: {filename}")
+    print(f"Grafik disimpan sebagai: {filename}")
     plt.show()
 
 def generate_driver_waiting_histogram(result, index=0):
@@ -576,7 +641,7 @@ def generate_driver_waiting_histogram(result, index=0):
 
     driver_waiting_times = result.get("driver_waiting_times", {})
     if not driver_waiting_times:
-        print(f"❌ No driver waiting time data available for Simulasi {index+1}.")
+        print(f"No driver waiting time data available for Simulasi {index+1}.")
         return
 
     driver_avg_waiting = [np.mean(v) for v in driver_waiting_times.values() if v]
@@ -591,7 +656,7 @@ def generate_driver_waiting_histogram(result, index=0):
 
     filename = f"driver_waiting_Simulasi_{index+1}.png"
     plt.savefig(filename, dpi=300, bbox_inches='tight')
-    print(f"✅ Grafik disimpan sebagai: {filename}")
+    print(f"Grafik disimpan sebagai: {filename}")
     plt.show()
 
 
@@ -613,15 +678,15 @@ if __name__ == '__main__':
     print(f"\nRunning 3 simulations with {num_drivers} drivers and {num_stations} stations...")
     
     # Run simulations
-    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3)
+    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=1)
     
     # Generate analysis
     generate_analysis_graphs(results)
     generate_station_waiting_histogram(results[0], 0)  # Ambil distribusi stasiun dari simulasi pertama
     generate_driver_waiting_histogram(results[0], 0)   # Ambil distribusi driver dari simulasi pertama
-    generate_station_waiting_histogram(results[1], 1)  # Ambil distribusi stasiun dari simulasi pertama
-    generate_driver_waiting_histogram(results[1], 1)   # Ambil distribusi driver dari simulasi pertama
-    generate_station_waiting_histogram(results[2], 2)  # Ambil distribusi stasiun dari simulasi pertama
-    generate_driver_waiting_histogram(results[2], 2)   # Ambil distribusi driver dari simulasi pertama
+    # generate_station_waiting_histogram(results[1], 1)  # Ambil distribusi stasiun dari simulasi pertama
+    # generate_driver_waiting_histogram(results[1], 1)   # Ambil distribusi driver dari simulasi pertama
+    # generate_station_waiting_histogram(results[2], 2)  # Ambil distribusi stasiun dari simulasi pertama
+    # generate_driver_waiting_histogram(results[2], 2)   # Ambil distribusi driver dari simulasi pertama
     
     print(f"\nAll simulations completed successfully!")

@@ -158,7 +158,7 @@ class EVMotorBike:
                         duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
 
                         # Hitung energi per menit
-                        energy_per_minute = distance / (duration_now * 60)
+                        energy_per_minute = (distance * 100 / 65) / duration_now # Ubah ke persentase baterai
                         progress_per_minute = route_length / duration_now
                         idx_now += progress_per_minute
                         index_int = int(idx_now)
@@ -217,7 +217,7 @@ class EVMotorBike:
                         duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
 
                         # Hitung energi per menit
-                        energy_per_minute = distance / (duration_now * 60)
+                        energy_per_minute = (distance * 100 / 65) / duration_now # Ubah ke persentase baterai
                         progress_per_minute = route_length / duration_now
                         idx_now += progress_per_minute
                         index_int = int(idx_now)
@@ -289,7 +289,7 @@ class EVMotorBike:
                         duration_now = duration * 30 / speed # Ubah dari default 30 jadi speed per jam
 
                         # Hitung energi per menit
-                        energy_per_minute = distance / (duration_now * 60)
+                        energy_per_minute = (distance * 100 / 65) / duration_now # Ubah ke persentase baterai
                         progress_per_minute = route_length / duration_now
                         idx_now += progress_per_minute
                         index_int = int(idx_now)
@@ -343,11 +343,14 @@ class EVMotorBike:
                     self.daily_income -= 5000
                     simulation.station_waiting_times[self.swap_schedule["battery_station"]].append(self.swap_schedule["waiting_time"])
                     simulation.driver_waiting_times[self.id].append(self.swap_schedule["waiting_time"])
+
+                    yield env.timeout(2)  # 2 minutes for swap process
                     self.battery_swap(env, battery_swap_station, swap_schedules)
             else:
                 yield env.timeout(1)
 
     def battery_swap(self, env, battery_swap_station, swap_schedules):
+        # cek ada swap schedule ga
         station_id = self.swap_schedule["battery_station"]
         slot_index = self.swap_schedule["slot"]
 
