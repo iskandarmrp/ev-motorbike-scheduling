@@ -132,6 +132,8 @@ class OrderSystem:
 
             distance, duration = self.get_distance_and_duration(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2)
 
+            # print("distance order", distance)
+
             order.distance = distance
             order.cost = distance * 3000
             
@@ -157,7 +159,7 @@ class OrderSystem:
                         ev for ev in fleet_ev_motorbikes.values()
                         if (ev.status == "idle" and 
                             ev.online_status == "online" and 
-                            ev.battery.battery_now > 15)
+                            ev.battery.battery_now > 5)
                     ]
                     
                     if not available_evs:
@@ -222,7 +224,7 @@ class OrderSystem:
                 total_energy_needed = ((total_distance / 65.0) * 100) + nearest_energy_to_bss
                 
                 # Check if EV has enough battery (with 20% buffer instead of 25%)
-                if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 10): # Buffer 10
+                if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 5): # Buffer 5
                     min_distance = distance_to_order
                     best_ev = ev
         

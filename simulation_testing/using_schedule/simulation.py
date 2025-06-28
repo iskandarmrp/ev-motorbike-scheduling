@@ -295,7 +295,7 @@ class Simulation:
             # Find nearest station energy requirement
             nearest_energy_to_bss = self.find_nearest_station_energy(order_destination_lat, order_destination_lon)
             
-            if energy_needed + nearest_energy_to_bss < (battery_now * (100 - ev.battery.cycle * 0.025)/100) - 10:  # Keep 10% buffer
+            if energy_needed + nearest_energy_to_bss < (battery_now * (100 - ev.battery.cycle * 0.025)/100) - 15:  # Keep 10% buffer
                 order = Order(self.order_system.total_order + 1)
                 order.status = 'on going'
                 order.order_origin_lat = order_origin_lat
@@ -489,11 +489,11 @@ class Simulation:
 
             try:
                 print(f"[SYNC @ {self.env.now}m] Kirim ke /api/sync-online-transportation-data ...")
-                res1 = requests.post("http://localhost:8000/api/sync-online-transportation-data", json=data_online, timeout=10)
+                res1 = requests.post("http://localhost:8000/api/sync-online-transportation-data", json=data_online, timeout=300)
                 print("Status:", res1.status_code)
 
                 print(f"[SYNC @ {self.env.now}m] Kirim ke /api/sync-battery-swap-system-data ...")
-                res2 = requests.post("http://localhost:8000/api/sync-battery-swap-system-data", json=data_bss, timeout=10)
+                res2 = requests.post("http://localhost:8000/api/sync-battery-swap-system-data", json=data_bss, timeout=300)
                 print("Status:", res2.status_code)
 
                 self.sync_done_event.succeed()
@@ -624,6 +624,7 @@ class Simulation:
                     'waiting_time': schedule['waiting_time'],
                     'exchanged_battery': schedule['exchanged_battery'],
                     'received_battery': schedule['received_battery'],
+                    'exchanged_battery_cycle': schedule['exchanged_battery_cycle'],
                     'received_battery_cycle': schedule['received_battery_cycle'],
                     'status': schedule['status'],
                     'scheduled_time': schedule['scheduled_time'],

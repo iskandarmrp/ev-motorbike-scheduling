@@ -79,5 +79,6 @@ class JadwalPenukaran(Base):
     estimasi_baterai_tempuh = Column(Float)
     perkiraan_kapasitas_baterai_yang_ditukar = Column(Float)
     perkiraan_kapasitas_baterai_yang_didapat = Column(Float)
+    perkiraan_siklus_baterai_yang_ditukar = Column(Float)
     perkiraan_siklus_baterai_yang_didapat = Column(Float)
     status = Column(String)

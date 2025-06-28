@@ -124,6 +124,7 @@ class EVMotorBike:
         self.order_schedule = {}
         self.swap_schedule = {}
         self.daily_income = 0
+        self.extra_waiting_time = 0
 
         self.battery.id = copy.deepcopy(battery_counter[0])
         self.battery.location = 'motor'
@@ -337,14 +338,21 @@ class EVMotorBike:
 
                     print("slot index",slot_index)
                     print("panjang slot", len(station.slots))
+                    self.extra_waiting_time = 0
                     while station.slots[slot_index].battery_now < 80:
+                        self.extra_waiting_time += 1
                         yield env.timeout(1)
+
+                    self.swap_schedule['waiting_time'] = self.swap_schedule['waiting_time'] + self.extra_waiting_time
+                    swap_id = self.swap_schedule.get("swap_id")
+                    current_schedule = swap_schedules[swap_id]
+                    current_schedule['waiting_time'] = self.swap_schedule['waiting_time']
 
                     self.daily_income -= 5000
                     simulation.station_waiting_times[self.swap_schedule["battery_station"]].append(self.swap_schedule["waiting_time"])
                     simulation.driver_waiting_times[self.id].append(self.swap_schedule["waiting_time"])
 
-                    yield env.timeout(2)  # 2 minutes for swap process
+                    # yield env.timeout(2)  # 2 minutes for swap process
                     self.battery_swap(env, battery_swap_station, swap_schedules)
             else:
                 yield env.timeout(1)

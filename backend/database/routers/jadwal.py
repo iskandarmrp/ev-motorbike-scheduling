@@ -29,6 +29,7 @@ def insert_swap_schedules(data: list[dict], db: Session = Depends(get_db)):
                 "estimasi_baterai_tempuh": entry["energy_distance"],
                 "perkiraan_kapasitas_baterai_yang_ditukar": entry["exchanged_battery"],
                 "perkiraan_kapasitas_baterai_yang_didapat": entry["received_battery"],
+                "perkiraan_siklus_baterai_yang_ditukar": entry["exchanged_battery_cycle"],
                 "perkiraan_siklus_baterai_yang_didapat": entry["received_battery_cycle"],
                 "status": entry["status"],
             })
@@ -45,6 +46,7 @@ def insert_swap_schedules(data: list[dict], db: Session = Depends(get_db)):
                 estimasi_baterai_tempuh=entry["energy_distance"],
                 perkiraan_kapasitas_baterai_yang_ditukar=entry["exchanged_battery"],
                 perkiraan_kapasitas_baterai_yang_didapat=entry["received_battery"],
+                perkiraan_siklus_baterai_yang_ditukar=entry["exchanged_battery_cycle"],
                 perkiraan_siklus_baterai_yang_didapat=entry["received_battery_cycle"],
                 status=entry["status"],
             )
@@ -71,6 +73,7 @@ def get_all_swap_schedules(db: Session = Depends(get_db)):
             "energy_distance": j.estimasi_baterai_tempuh,
             "exchanged_battery": j.perkiraan_kapasitas_baterai_yang_ditukar,
             "received_battery": j.perkiraan_kapasitas_baterai_yang_didapat,
+            "exchanged_battery_cycle": j.perkiraan_siklus_baterai_yang_ditukar,
             "received_battery_cycle": j.perkiraan_siklus_baterai_yang_didapat,
             "status": j.status,
         })

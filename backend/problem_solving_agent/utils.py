@@ -148,20 +148,20 @@ def get_neighbor_simulated_annealing(solution, ev, battery_swap_station, chargin
     return neighbor
 
 def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destination_lon):
-        try:
-            url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=false"
-            response = requests.get(url, timeout=3)
-            data = response.json()
+    try:
+        url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=false"
+        response = requests.get(url, timeout=3)
+        data = response.json()
 
-            if data["code"] == "Ok":
-                route = data["routes"][0]
-                distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
-                duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
-                return distance_km, duration_min
+        if data["code"] == "Ok":
+            route = data["routes"][0]
+            distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+            duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
+            return distance_km, duration_min
                     
-        except:
-            # Fallback to haversine calculation
-            return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+    except:
+        # Fallback to haversine calculation
+        return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
 
 def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon):
@@ -181,7 +181,7 @@ def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station):
     for ev in fleet_ev_motorbikes.values():
-        if ev.get("swap_schedule") or ev.get("battery_now") > 30:
+        if ev.get("swap_schedule") or ev.get("battery_now") > 40:
             continue
 
         ev["energy_distance"] = []
@@ -221,7 +221,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
             else:
                 continue
 
-            energy = round(distance * (100 / 60), 2)
+            energy = round(distance * (100 / 65), 2)
 
             haversine_results.append({
                 "station_id": station_id,
@@ -232,16 +232,16 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
             })
 
         # Ambil 3 BSS terdekat
-        top3 = sorted(haversine_results, key=lambda x: x["energy"])[:3]
+        top5 = sorted(haversine_results, key=lambda x: x["energy"])[:5]
 
         # Hitung ulang pakai OSRM hanya untuk 3
-        for t in top3:
+        for t in top5:
             if ev["status"] == 'idle':
                 d, dur = get_distance_and_duration(
                     ev["current_lat"], ev["current_lon"],
                     t["station"]["lat"], t["station"]["lon"]
                 )
-                t["energy"] = round(d * (100 / 60), 2)
+                t["energy"] = round(d * (100 / 65), 2)
                 t["duration"] = dur
 
             elif ev["status"] == 'heading to order':
@@ -250,7 +250,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     ev["order_schedule"]["order_origin_lat"],
                     ev["order_schedule"]["order_origin_lon"]
                 )
-                e1 = round(d1 * (100 / 60), 2)
+                e1 = round(d1 * (100 / 65), 2)
 
                 d2, t2 = get_distance_and_duration(
                     ev["order_schedule"]["order_origin_lat"],
@@ -258,7 +258,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     ev["order_schedule"]["order_destination_lat"],
                     ev["order_schedule"]["order_destination_lon"]
                 )
-                e2 = round(d2 * (100 / 60), 2)
+                e2 = round(d2 * (100 / 65), 2)
 
                 d3, t3 = get_distance_and_duration(
                     ev["order_schedule"]["order_destination_lat"],
@@ -266,7 +266,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     t["station"]["lat"],
                     t["station"]["lon"]
                 )
-                e3 = round(d3 * (100 / 60), 2)
+                e3 = round(d3 * (100 / 65), 2)
 
                 t["energy"] = e1 + e2 + e3
                 t["duration"] = t1 + t2 + t3
@@ -277,7 +277,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     ev["order_schedule"]["order_destination_lat"],
                     ev["order_schedule"]["order_destination_lon"]
                 )
-                e1 = round(d1 * (100 / 60), 2)
+                e1 = round(d1 * (100 / 65), 2)
 
                 d2, t2 = get_distance_and_duration(
                     ev["order_schedule"]["order_destination_lat"],
@@ -285,22 +285,20 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     t["station"]["lat"],
                     t["station"]["lon"]
                 )
-                e2 = round(d2 * (100 / 60), 2)
+                e2 = round(d2 * (100 / 65), 2)
 
                 t["energy"] = e1 + e2
                 t["duration"] = t1 + t2
 
         # Final: isi list berdasarkan ID
         for station_id, _ in station_list:
-            match = next((t for t in top3 if t["station_id"] == station_id), None)
+            match = next((t for t in top5 if t["station_id"] == station_id), None)
             if match:
                 ev["energy_distance"].append(match["energy"])
                 ev["travel_time"].append(match["duration"])
             else:
                 ev["energy_distance"].append(99999.0)
                 ev["travel_time"].append(99999.0)
-
-
 
 def convert_fleet_ev_motorbikes_to_dict(fleet_ev_motorbikes):
     ev_dict = {}
@@ -420,6 +418,7 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
                 'waiting_time': sched.get("waiting_time", 0),
                 'exchanged_battery': sched.get("exchanged_battery"),
                 'received_battery': sched.get("received_battery", 0),
+                'exchanged_battery_cycle': sched.get("exchanged_battery_cycle"),
                 'received_battery_cycle': sched.get("received_battery_cycle", 0),
                 'status': sched.get("status"),
                 'scheduled_time': sched.get("scheduled_time")

@@ -17,9 +17,9 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         if data['swap_schedule']:
             continue
 
-        if data['battery_now'] < 30:
+        if data['battery_now'] <= 40:
             energy_to_nearest = min(data['energy_distance'])
-            if data['battery_now'] - energy_to_nearest < threshold:
+            if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - energy_to_nearest < threshold:
                 candidates.append(i)
         else:
             solution[i] = {
@@ -34,6 +34,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
                 'waiting_time': None,
                 'exchanged_battery': None,
                 'received_battery': None,
+                'exchanged_battery_cycle': None,
                 'received_battery_cycle': None,
                 'status': None,
                 'scheduled_time': None,
@@ -52,7 +53,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         valid_options = []
 
         for station_idx, (ed, tt) in enumerate(zip(data['energy_distance'], data['travel_time'])):
-            if data['battery_now'] - ed < 0:
+            if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - ed < 0:
                 continue
             for slot_idx in range(len(battery_swap_station[station_idx])):
                 valid_options.append((station_idx, slot_idx, ed, tt))
@@ -70,6 +71,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
                 'waiting_time': None,
                 'exchanged_battery': None,
                 'received_battery': None,
+                'exchanged_battery_cycle': None,
                 'received_battery_cycle': None,
                 'status': None,
                 'scheduled_time': None,
@@ -79,7 +81,9 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         # Pilih slot acak dari opsi valid
         station_idx, slot_idx, energy_dist, travel_time = random.choice(valid_options)
         key = (station_idx, slot_idx)
-        exchanged_battery = data['battery_now'] - energy_dist
+        degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+
+        exchanged_battery = data['battery_now'] - energy_dist * degradation_factor
 
         solution[i] = {
             'assigned': True,
@@ -93,6 +97,7 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
             'waiting_time': 0,  # akan diupdate
             'exchanged_battery': exchanged_battery,
             'received_battery': 0,  # akan diupdate
+            'exchanged_battery_cycle': data['battery_cycle'],
             'received_battery_cycle': 0, # akan diupdate
             'status': 'on going',
             'scheduled_time': None,

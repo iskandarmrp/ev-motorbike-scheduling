@@ -119,13 +119,15 @@ def random_repair(solution, ev, battery_swap_station, charging_rate, required_ba
 
         valid_options = []
         for station_idx, (ed, tt) in enumerate(zip(data['energy_distance'], data['travel_time'])):
-            if data['battery_now'] - ed < 0:
+            if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - ed < 0:
                 continue
             for slot_idx in range(len(battery_swap_station[station_idx])):
                 valid_options.append((station_idx, slot_idx, ed, tt))
         if valid_options:
             station_idx, slot_idx, ed, tt = random.choice(valid_options)
-            exchanged_battery = data['battery_now'] - ed
+
+            degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+            exchanged_battery = data['battery_now'] - ed * degradation_factor
             solution[target_ev] = {
                 'assigned': True,
                 'swap_id': None,
@@ -138,6 +140,7 @@ def random_repair(solution, ev, battery_swap_station, charging_rate, required_ba
                 'waiting_time': 0,  # akan diupdate
                 'exchanged_battery': exchanged_battery,
                 'received_battery': 0,  # akan diupdate
+                'exchanged_battery_cycle': data['battery_cycle'],
                 'received_battery_cycle': 0, # akan diupdate
                 'status': 'on going',
                 'scheduled_time': None,
@@ -158,7 +161,7 @@ def available_repair(solution, ev, battery_swap_station, charging_rate, required
         valid_options = []
 
         for station_idx, (ed, tt) in enumerate(zip(data['energy_distance'], data['travel_time'])):
-            if data['battery_now'] - ed < 0:
+            if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - ed < 0:
                 continue
             for slot_idx in range(len(battery_swap_station[station_idx])):
                 key = (station_idx, slot_idx)
@@ -167,7 +170,9 @@ def available_repair(solution, ev, battery_swap_station, charging_rate, required
 
         if valid_options:
             station_idx, slot_idx, ed, tt = random.choice(valid_options)
-            exchanged_battery = data['battery_now'] - ed
+
+            degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+            exchanged_battery = data['battery_now'] - ed * degradation_factor
             solution[target_ev] = {
                 'assigned': True,
                 'swap_id': None,
@@ -180,6 +185,7 @@ def available_repair(solution, ev, battery_swap_station, charging_rate, required
                 'waiting_time': 0,  # akan diupdate
                 'exchanged_battery': exchanged_battery,
                 'received_battery': 0,  # akan diupdate
+                'exchanged_battery_cycle': data['battery_cycle'],
                 'received_battery_cycle': 0, # akan diupdate
                 'status': 'on going',
                 'scheduled_time': None,

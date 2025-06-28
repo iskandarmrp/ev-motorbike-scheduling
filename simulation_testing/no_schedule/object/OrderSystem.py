@@ -185,7 +185,7 @@ class OrderSystem:
                         self.order_active.append(order)
                     else:
                         order.searching_time += 1
-                        if order.searching_time >= 10:
+                        if order.searching_time >= 20:
                             order.status = "failed"
                             order.completed_at = (start_time + timedelta(minutes=env.now)).isoformat()
                             self.order_search_driver.remove(order)

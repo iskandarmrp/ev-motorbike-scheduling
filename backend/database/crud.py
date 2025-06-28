@@ -182,6 +182,7 @@ def get_all_schedules(db: Session):
             "waiting_time": j.estimasi_waktu_tunggu,
             "exchanged_battery": j.perkiraan_kapasitas_baterai_yang_ditukar,
             "received_battery": j.perkiraan_kapasitas_baterai_yang_didapat,
+            "exchanged_battery_cycle": j.perkiraan_siklus_baterai_yang_ditukar,
             "received_battery_cycle": j.perkiraan_siklus_baterai_yang_didapat,
             "status": j.status,
             "scheduled_time": j.waktu_penukaran.isoformat() if j.waktu_penukaran else ""
