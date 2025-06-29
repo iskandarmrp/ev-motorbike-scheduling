@@ -231,6 +231,24 @@ class OrderSystem:
         #     return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
         return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+    
+    def get_distance_and_duration_real(self, origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2):
+        """Get distance and duration with fallback"""
+        # Pakai OSRM kelamaan
+
+        try:
+            url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=false"
+            response = requests.get(url, timeout=3)
+            data = response.json()
+
+            if data["code"] == "Ok":
+                route = data["routes"][0]
+                distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+                duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
+                return distance_km, duration_min          
+        except:
+            # Fallback to haversine calculation
+            return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
     def haversine_distance(self, origin_lat, origin_lon, destination_lat, destination_lon):
         """Haversine distance calculation"""

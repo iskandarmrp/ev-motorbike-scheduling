@@ -130,7 +130,7 @@ class OrderSystem:
             order.order_destination_lon = destination_lon
             order.created_at = (start_time + timedelta(minutes=self.env.now)).isoformat()
 
-            distance, duration = self.get_distance_and_duration(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2)
+            distance, duration = self.get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2)
 
             # print("distance order", distance)
 
@@ -224,7 +224,7 @@ class OrderSystem:
                 total_energy_needed = ((total_distance / 65.0) * 100) + nearest_energy_to_bss
                 
                 # Check if EV has enough battery (with 20% buffer instead of 25%)
-                if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 5): # Buffer 5
+                if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 8): # Buffer 8
                     min_distance = distance_to_order
                     best_ev = ev
         
@@ -259,6 +259,26 @@ class OrderSystem:
         #     return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
         return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+    
+    def get_distance_and_duration_real(self, origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2):
+        """Get distance and duration with fallback"""
+        # Khusus Distance Order
+
+        try:
+            url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=false"
+            response = requests.get(url, timeout=3)
+            data = response.json()
+
+            if data["code"] == "Ok":
+                route = data["routes"][0]
+                distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+                duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
+                return distance_km, duration_min          
+        except:
+            # Fallback to haversine calculation
+            return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+        
+        # return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
     def haversine_distance(self, origin_lat, origin_lon, destination_lat, destination_lon):
         """Haversine distance calculation"""

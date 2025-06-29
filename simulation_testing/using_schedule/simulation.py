@@ -26,6 +26,7 @@ from simulation_utils import (
     apply_schedule_to_ev_fleet,
     add_and_save_swap_schedule,
     snap_to_road,
+    get_distance_and_duration_real,
     haversine_distance
 )
 
@@ -304,8 +305,10 @@ class Simulation:
                 order.order_destination_lon = order_destination_lon
                 order.created_at = (self.start_time + timedelta(minutes=self.env.now)).isoformat()
                 order.assigned_motorbike_id = ev.id
-                order.distance = order_distance
-                order.cost = order_distance * 3000
+                distance, duration = get_distance_and_duration_real(lat, lon, order_origin_lat, order_origin_lon)
+
+                order.distance = distance
+                order.cost = distance * 3000
                 self.order_system.order_active.append(order)
                 self.order_system.total_order += 1
 
