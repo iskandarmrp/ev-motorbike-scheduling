@@ -155,7 +155,7 @@ async def get_jadwal_penukaran():
             threshold=15,
             charging_rate=100 / 240,
             required_battery_threshold=80,
-            max_iter=200
+            max_iter=1000
         )
 
         execution_time = time.time() - start

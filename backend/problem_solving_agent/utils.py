@@ -155,13 +155,15 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
 
         if data["code"] == "Ok":
             route = data["routes"][0]
-            distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+            distance_km = max(route["distance"] / 1000, 0.000001)
             duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
             return distance_km, duration_min
                     
     except:
         # Fallback to haversine calculation
         return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+    
+    return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
 
 def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon):
@@ -181,7 +183,7 @@ def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap_station):
     for ev in fleet_ev_motorbikes.values():
-        if ev.get("swap_schedule") or ev.get("battery_now") > 40:
+        if ev.get("swap_schedule") or ev.get("battery_now") > 25:
             continue
 
         ev["energy_distance"] = []
@@ -189,6 +191,8 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
 
         station_list = [(sid, station) for sid, station in battery_swap_station.items()]
         haversine_results = []
+
+        # print(station_list)
 
         for station_id, station in station_list:
             # Tentukan titik awal
@@ -232,16 +236,16 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
             })
 
         # Ambil 3 BSS terdekat
-        top5 = sorted(haversine_results, key=lambda x: x["energy"])[:5]
+        top8 = sorted(haversine_results, key=lambda x: x["energy"])[:8]
 
         # Hitung ulang pakai OSRM hanya untuk 3
-        for t in top5:
+        for t in top8:
             if ev["status"] == 'idle':
                 d, dur = get_distance_and_duration(
                     ev["current_lat"], ev["current_lon"],
                     t["station"]["lat"], t["station"]["lon"]
                 )
-                t["energy"] = round(d * (100 / 65), 2)
+                t["energy"] = d * (100 / 65)
                 t["duration"] = dur
 
             elif ev["status"] == 'heading to order':
@@ -250,7 +254,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     ev["order_schedule"]["order_origin_lat"],
                     ev["order_schedule"]["order_origin_lon"]
                 )
-                e1 = round(d1 * (100 / 65), 2)
+                e1 = d1 * (100 / 65)
 
                 d2, t2 = get_distance_and_duration(
                     ev["order_schedule"]["order_origin_lat"],
@@ -258,7 +262,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     ev["order_schedule"]["order_destination_lat"],
                     ev["order_schedule"]["order_destination_lon"]
                 )
-                e2 = round(d2 * (100 / 65), 2)
+                e2 = d2 * (100 / 65)
 
                 d3, t3 = get_distance_and_duration(
                     ev["order_schedule"]["order_destination_lat"],
@@ -266,7 +270,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     t["station"]["lat"],
                     t["station"]["lon"]
                 )
-                e3 = round(d3 * (100 / 65), 2)
+                e3 = d3 * (100 / 65)
 
                 t["energy"] = e1 + e2 + e3
                 t["duration"] = t1 + t2 + t3
@@ -277,7 +281,7 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     ev["order_schedule"]["order_destination_lat"],
                     ev["order_schedule"]["order_destination_lon"]
                 )
-                e1 = round(d1 * (100 / 65), 2)
+                e1 = d1 * (100 / 65)
 
                 d2, t2 = get_distance_and_duration(
                     ev["order_schedule"]["order_destination_lat"],
@@ -285,14 +289,14 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                     t["station"]["lat"],
                     t["station"]["lon"]
                 )
-                e2 = round(d2 * (100 / 65), 2)
+                e2 = d2 * (100 / 65)
 
                 t["energy"] = e1 + e2
                 t["duration"] = t1 + t2
 
         # Final: isi list berdasarkan ID
         for station_id, _ in station_list:
-            match = next((t for t in top5 if t["station_id"] == station_id), None)
+            match = next((t for t in top8 if t["station_id"] == station_id), None)
             if match:
                 ev["energy_distance"].append(match["energy"])
                 ev["travel_time"].append(match["duration"])
@@ -385,7 +389,7 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
     fleet_dict = {}
     station_list = {}
 
-    print(orders)
+    # print(orders)
 
     if orders:
         order_map = {
@@ -402,7 +406,7 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
     else:
         order_map = {}
 
-    print(schedules)
+    # print(schedules)
     
     if schedules:
         swap_schedule_map = {
@@ -448,8 +452,17 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
 
     station_dict = get_station_dict_from_list(battery_swap_stations, batteries)
 
+    fleet_dict = dict(sorted(fleet_dict.items()))
+    station_dict = dict(sorted(station_dict.items()))
+
+    # print(fleet_dict)
+    # print(station_dict)
+
     update_energy_distance_and_travel_time_all(fleet_dict, station_dict)
     fleet_dict = convert_fleet_ev_motorbikes_to_dict(fleet_dict)
     station_list = convert_station_dict_to_list(station_dict)
+
+    # print(station_dict)
+    
 
     return fleet_dict, station_list

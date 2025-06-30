@@ -13,4 +13,5 @@ class Order:
         self.created_at = None
         self.completed_at = None
         self.distance = 0
+        self.energy_distance = 0
         self.cost = 0

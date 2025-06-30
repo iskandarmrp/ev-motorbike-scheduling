@@ -133,7 +133,11 @@ class OrderSystem:
             distance, duration = self.get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2)
 
             # print("distance order", distance)
-
+            # print("Order distance nepu", order_distance)
+            # print("Order distance asli", distance)
+            # print("Energy yang dibutuhkan nepu", (order_distance / 65.0) * 100)
+            # print("Energy yang dibutuhkan asli", (distance / 65.0) * 100)
+            order.energy_distance = (distance / 65.0) * 100
             order.distance = distance
             order.cost = distance * 3000
             
@@ -147,7 +151,9 @@ class OrderSystem:
         """Enhanced driver search with realistic constraints"""
         while True:
             if self.last_schedule_event and not self.last_schedule_event.processed:
+                print("Sabar nunggu schedule")
                 yield self.last_schedule_event
+            print("Schedule udah kelar")
 
             if self.order_search_driver:
                 # Process orders in batches for efficiency
@@ -158,8 +164,7 @@ class OrderSystem:
                     available_evs = [
                         ev for ev in fleet_ev_motorbikes.values()
                         if (ev.status == "idle" and 
-                            ev.online_status == "online" and 
-                            ev.battery.battery_now > 5)
+                            ev.online_status == "online")
                     ]
                     
                     if not available_evs:
@@ -200,15 +205,12 @@ class OrderSystem:
 
     def find_best_ev_for_order(self, order, available_evs, battery_swap_station):
         """Find the best EV for a specific order with realistic constraints"""
-        best_ev = None
+        best_evs = []
         min_distance = float('inf')
 
         nearest_energy_to_bss = self.find_nearest_station_energy(order.order_destination_lat, order.order_destination_lon, battery_swap_station)
 
-        order_distance, order_duration = self.get_distance_and_duration(
-            order.order_origin_lat, order.order_origin_lon,
-            order.order_destination_lat, order.order_destination_lon
-        )
+        order_distance = order.energy_distance
         
         for ev in available_evs:
             # Calculate distance to order pickup
@@ -220,24 +222,44 @@ class OrderSystem:
             # Prefer closer EVs (more realistic)
             if distance_to_order < min_distance:
                 # Calculate total energy needed (100% battery = 65km)
-                total_distance = distance_to_order + order_distance
-                total_energy_needed = ((total_distance / 65.0) * 100) + nearest_energy_to_bss
+                total_energy_needed = ((distance_to_order / 65.0) * 100) + nearest_energy_to_bss + order_distance
                 
                 # Check if EV has enough battery (with 20% buffer instead of 25%)
-                if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 8): # Buffer 8
+                if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 5): # Buffer 5
                     min_distance = distance_to_order
-                    best_ev = ev
+                    best_evs.append(ev)
+
+        best_ev = None
         
+        for ev in reversed(best_evs):
+            # proses EV dari belakang ke depan
+            distance_to_order, duration_to_order = self.get_distance_and_duration_real(
+                ev.current_lat, ev.current_lon,
+                order.order_origin_lat, order.order_origin_lon
+            )
+
+            total_energy_needed = ((distance_to_order / 65.0) * 100) + nearest_energy_to_bss + order_distance
+
+            if (ev.battery.battery_now * (100 - ev.battery.cycle * 0.025)/100) >= (total_energy_needed + 5): # Buffer 10
+                best_ev = ev
+                break
+
         return best_ev
     
     def find_nearest_station_energy(self, lat, lon, battery_swap_station):
         """Find energy needed to reach nearest battery station"""
+        station_lat = 0
+        station_lon = 0
         min_energy = float('inf')
         for station in battery_swap_station.values():
             distance, duration = self.get_distance_and_duration(lat,lon, station.lat, station.lon)
             energy = (distance / 65.0) * 100  # Convert to battery percentage
             if energy < min_energy:
                 min_energy = energy
+                station_lat = station.lat
+                station_lon = station.lon
+        min_distance, min_duration = self.get_distance_and_duration_real(lat,lon, station_lat, station_lon)
+        min_energy = (min_distance / 65.0) * 100
         return min_energy
 
     def get_distance_and_duration(self, origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2):
@@ -271,14 +293,14 @@ class OrderSystem:
 
             if data["code"] == "Ok":
                 route = data["routes"][0]
-                distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+                distance_km = max(route["distance"] / 1000, 0.000001)
                 duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
                 return distance_km, duration_min          
         except:
             # Fallback to haversine calculation
             return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
-        # return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+        return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
     def haversine_distance(self, origin_lat, origin_lon, destination_lat, destination_lon):
         """Haversine distance calculation"""

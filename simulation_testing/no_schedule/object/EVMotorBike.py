@@ -198,7 +198,8 @@ class EVMotorbike:
                         self.current_lat = self.order_schedule.get("order_origin_lat")
                         self.current_lon = self.order_schedule.get("order_origin_lon")
                         # Pengurangan baterai dengan degradasi cycle
-                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                        degradation_factor = 1 / actual_percentage
                         
                         self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes * degradation_factor)
                         yield env.timeout(last_minutes)
@@ -210,7 +211,8 @@ class EVMotorbike:
                         self.current_lat = lat_now
                         self.current_lon = lon_now
                         # Pengurangan baterai dengan degradasi cycle
-                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                        degradation_factor = 1 / actual_percentage
 
                         self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * degradation_factor)
                         yield env.timeout(1)
@@ -262,7 +264,8 @@ class EVMotorbike:
                         self.current_lat = self.order_schedule.get("order_destination_lat")
                         self.current_lon = self.order_schedule.get("order_destination_lon")
                         # Pengurangan baterai dengan degradasi cycle
-                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                        degradation_factor = 1 / actual_percentage
                         
                         self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes * degradation_factor)
                         yield env.timeout(last_minutes)
@@ -289,7 +292,8 @@ class EVMotorbike:
                         self.current_lat = lat_now
                         self.current_lon = lon_now
                         # Pengurangan baterai dengan degradasi cycle
-                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                        degradation_factor = 1 / actual_percentage
 
                         self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * degradation_factor)
                         yield env.timeout(1)
@@ -332,7 +336,8 @@ class EVMotorbike:
                         self.current_lat = battery_swap_station.get(battery_station_id).lat
                         self.current_lon = battery_swap_station.get(battery_station_id).lon
                         # Pengurangan baterai dengan degradasi cycle
-                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                        degradation_factor = 1 / actual_percentage
                         
                         self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * last_minutes * degradation_factor)
                         yield env.timeout(last_minutes)
@@ -347,7 +352,8 @@ class EVMotorbike:
                         self.current_lat = lat_now
                         self.current_lon = lon_now
                         # Pengurangan baterai dengan degradasi cycle
-                        degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                        actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                        degradation_factor = 1 / actual_percentage
 
                         self.battery.battery_now = max(0, self.battery.battery_now - energy_per_minute * degradation_factor)
                         yield env.timeout(1)

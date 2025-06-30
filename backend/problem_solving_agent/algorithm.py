@@ -90,7 +90,7 @@ def destroy_high_waiting_time(solution, ev, destroy_ratio=0.1):
     # Urutkan keys berdasarkan waiting_time descending
     sorted_keys = sorted(keys, key=lambda k: destroyed[k]["waiting_time"], reverse=True)
 
-    upper_bound = max(1, int(len(sorted_keys) * destroy_ratio))
+    upper_bound = max(1, int(len(sorted_keys)))
     num_remove = random.randint(1, upper_bound)  # jumlah yang di-destroy dipilih acak
     to_remove = sorted_keys[:num_remove]  # Ambil waiting_time terbesar
 
@@ -126,7 +126,9 @@ def random_repair(solution, ev, battery_swap_station, charging_rate, required_ba
         if valid_options:
             station_idx, slot_idx, ed, tt = random.choice(valid_options)
 
-            degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+            # degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+            actual_percentage = 1 - (0.00025 * data['battery_cycle'])
+            degradation_factor = 1 / actual_percentage
             exchanged_battery = data['battery_now'] - ed * degradation_factor
             solution[target_ev] = {
                 'assigned': True,
@@ -171,7 +173,9 @@ def available_repair(solution, ev, battery_swap_station, charging_rate, required
         if valid_options:
             station_idx, slot_idx, ed, tt = random.choice(valid_options)
 
-            degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+            # degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+            actual_percentage = 1 - (0.00025 * data['battery_cycle'])
+            degradation_factor = 1 / actual_percentage
             exchanged_battery = data['battery_now'] - ed * degradation_factor
             solution[target_ev] = {
                 'assigned': True,
@@ -222,7 +226,6 @@ def alns_ev_scheduler(
     current = random_initialization(battery_swap_station, ev, threshold, charging_rate, required_battery_threshold)
     best = copy.deepcopy(current)
     best_score = evaluate(best)
-    T = 1.0
 
     destroy_ops = [random_destroy, destroy_high_waiting_time]
     repair_ops = [random_repair, available_repair]
@@ -249,26 +252,27 @@ def alns_ev_scheduler(
         repaired = repair_ops[repair_idx](destroyed, ev, battery_swap_station, charging_rate, required_battery_threshold, to_remove)
 
         score = evaluate(repaired)
-        delta = score - evaluate(current)
 
-        if delta > 0 or random.random() < math.exp(delta / (T + 1e-6)):
-            current = repaired
-            if score > best_score:
-                best = copy.deepcopy(repaired)
-                best_score = score
-                destroy_scores[destroy_idx] += 5
-                repair_scores[repair_idx] += 5
-            else:
-                destroy_scores[destroy_idx] += 1
-                repair_scores[repair_idx] += 1
+        if score > best_score:
+            best = copy.deepcopy(repaired)
+            best_score = score
+            destroy_scores[destroy_idx] += 1
+            repair_scores[repair_idx] += 1
+
+            current = copy.deepcopy(best)
+        else:
+            destroy_scores[destroy_idx] -= 1
+            repair_scores[repair_idx] -= 1
 
         if (it + 1) % 50 == 0:
-            destroy_weights = normalize_scores(destroy_scores)
-            repair_weights = normalize_scores(repair_scores)
+            destroy_weights = [1.0]
+            repair_weights = [1.0]
             destroy_scores = [0.0 for _ in destroy_ops]
             repair_scores = [0.0 for _ in repair_ops]
 
-        T *= 0.95
+        # if (it + 1) % 400 == 0:
+        #     current = random_initialization(battery_swap_station, ev, threshold, charging_rate, required_battery_threshold)
+
         print(f"[{it}] Best score: {best_score}")
         history.append(best_score)
 

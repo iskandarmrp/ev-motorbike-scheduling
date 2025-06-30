@@ -6,6 +6,8 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
     solution = {}
     station_batteries = copy.deepcopy(battery_swap_station)
 
+    # print(ev)
+
     # Inisialisasi semua EV yang punya schedule tetap
     for i, data in ev.items():
         if data['swap_schedule']:
@@ -17,10 +19,11 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         if data['swap_schedule']:
             continue
 
-        if data['battery_now'] <= 40:
-            energy_to_nearest = min(data['energy_distance'])
-            if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - energy_to_nearest < threshold:
-                candidates.append(i)
+        if data['battery_now'] <= 25:
+            # energy_to_nearest = min(data['energy_distance'])
+            # if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - energy_to_nearest < threshold:
+            #     candidates.append(i)
+            candidates.append(i)
         else:
             solution[i] = {
                 'assigned': False,
@@ -53,7 +56,11 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         valid_options = []
 
         for station_idx, (ed, tt) in enumerate(zip(data['energy_distance'], data['travel_time'])):
+            # print("Baterai sekarang:", data['battery_now'])
+            # print("Baterai asli:", data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100)
+            # print("Energi yang dibutuhkan", ed)
             if (data['battery_now'] * (100 - data['battery_cycle'] * 0.025)/100) - ed < 0:
+                # print("Gabisa bos")
                 continue
             for slot_idx in range(len(battery_swap_station[station_idx])):
                 valid_options.append((station_idx, slot_idx, ed, tt))
@@ -81,7 +88,9 @@ def random_initialization(battery_swap_station, ev, threshold, charging_rate, re
         # Pilih slot acak dari opsi valid
         station_idx, slot_idx, energy_dist, travel_time = random.choice(valid_options)
         key = (station_idx, slot_idx)
-        degradation_factor = 1 + (0.00025 * data['battery_cycle'])
+        actual_percentage = 1 - (0.00025 * data['battery_cycle'])
+        degradation_factor = 1 / actual_percentage
+        # degradation_factor = 1 + (0.00025 * data['battery_cycle'])
 
         exchanged_battery = data['battery_now'] - energy_dist * degradation_factor
 

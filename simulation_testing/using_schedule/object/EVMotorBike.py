@@ -49,7 +49,7 @@ def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lo
 
             if data["code"] == "Ok":
                 route_data = data["routes"][0]
-                distance_km = max(round(route_data["distance"] / 1000, 2), 0.000001)
+                distance_km = max(route_data["distance"] / 1000, 0.000001)
                 duration_hour = max(round(route_data["duration"] / (60 * 2), 2), 0.000001)
                 polyline_str = route_data["geometry"]
                 decoded_polyline = polyline.decode(polyline_str)
@@ -172,7 +172,8 @@ class EVMotorBike:
                             self.current_lon = self.order_schedule.get("order_origin_lon")
                             
                             # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                            actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                            degradation_factor = 1 / actual_percentage
 
                             self.battery.battery_now -= energy_per_minute * last_minutes * degradation_factor
                             yield env.timeout(last_minutes)
@@ -189,7 +190,8 @@ class EVMotorBike:
                             self.current_lon = lon_now
 
                             # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                            actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                            degradation_factor = 1 / actual_percentage
 
                             self.battery.battery_now -= energy_per_minute * degradation_factor
                             yield env.timeout(1)
@@ -231,7 +233,8 @@ class EVMotorBike:
                             self.current_lon = self.order_schedule.get("order_destination_lon")
 
                             # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                            actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                            degradation_factor = 1 / actual_percentage
 
                             self.battery.battery_now -= energy_per_minute * last_minutes * degradation_factor
                             yield env.timeout(last_minutes)
@@ -260,7 +263,8 @@ class EVMotorBike:
                             self.current_lon = lon_now
                             
                             # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                            actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                            degradation_factor = 1 / actual_percentage
 
                             self.battery.battery_now -= energy_per_minute * degradation_factor
                             yield env.timeout(1)
@@ -303,7 +307,8 @@ class EVMotorBike:
                             self.current_lon = battery_swap_station.get(battery_station_id).lon
                             
                             # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                            actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                            degradation_factor = 1 / actual_percentage
 
                             self.battery.battery_now -= energy_per_minute * last_minutes * degradation_factor
                             yield env.timeout(last_minutes)
@@ -320,7 +325,8 @@ class EVMotorBike:
                             self.current_lon = lon_now
                                                         
                             # Pengurangan baterai dengan degradasi cycle
-                            degradation_factor = 1 + (0.00025 * self.battery.cycle)
+                            actual_percentage = 1 - (0.00025 * self.battery.cycle)
+                            degradation_factor = 1 / actual_percentage
 
                             self.battery.battery_now -= energy_per_minute * degradation_factor
                             yield env.timeout(1)

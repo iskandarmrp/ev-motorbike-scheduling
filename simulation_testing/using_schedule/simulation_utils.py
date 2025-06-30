@@ -47,7 +47,7 @@ def get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, dest
 
         if data["code"] == "Ok":
             route = data["routes"][0]
-            distance_km = max(round(route["distance"] / 1000, 2), 0.000001)
+            distance_km = max(route["distance"] / 1000, 0.000001)
             duration_min = max(round(route["duration"] / (60 * 2), 2), 0.000001)
             return distance_km, duration_min
                     
@@ -55,7 +55,7 @@ def get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, dest
         # Fallback to haversine calculation
         return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
     
-    # return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
+    return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon):
     """Haversine distance calculation"""
