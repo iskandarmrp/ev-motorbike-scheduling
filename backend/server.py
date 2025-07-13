@@ -205,7 +205,7 @@ async def websocket_status(websocket: WebSocket):
 
                 valid_waiting_times = [
                     s["waiting_time"] for s in schedules 
-                    if s["waiting_time"] is not None and s["waiting_time"] > 0
+                    if s["status"] == "done" and s["waiting_time"] is not None and s["waiting_time"] > 0
                 ]
 
                 total_waiting = len(valid_waiting_times)

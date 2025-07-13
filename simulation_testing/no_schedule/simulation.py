@@ -19,7 +19,7 @@ from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
 from object.OrderSystem import OrderSystem
 from object.Order import Order
-from simulation_utils import snap_to_road, get_distance_and_duration
+from simulation_utils import snap_to_road, get_distance_and_duration, get_distance_and_duration_real
 
 OSRM_URL = "http://localhost:5000"
 
@@ -343,7 +343,7 @@ class Simulation:
         )
 
         # Initial Order
-        if random.random() < 0.05 and battery_now > 30:  # Only 5% start with orders
+        if random.random() < 0.05 and battery_now > 50:  # Only 5% start with orders
             order_distance = self.generate_order_distance()
             
             # Generate order coordinates
@@ -361,14 +361,15 @@ class Simulation:
             order_destination_lat, order_destination_lon = snap_to_road(order_destination_lat, order_destination_lon)
             
             # Calculate energy needed (100% battery = 65km)
-            distance_to_order, duration_to_order = get_distance_and_duration(lat, lon, order_origin_lat, order_origin_lon)
-            total_distance = distance_to_order + order_distance
+            order_distance_real, order_duration_real = get_distance_and_duration_real(order_origin_lat, order_origin_lon, order_destination_lat, order_destination_lon)
+            distance_to_order, duration_to_order = get_distance_and_duration_real(lat, lon, order_origin_lat, order_origin_lon)
+            total_distance = distance_to_order + order_distance_real
             energy_needed = (total_distance / 65.0) * 100  # Convert to battery percentage
             
             # Find nearest station energy requirement
             nearest_energy_to_bss = self.find_nearest_station_energy(order_destination_lat, order_destination_lon)
             
-            if energy_needed + nearest_energy_to_bss < (battery_now * (100 - ev.battery.cycle * 0.025)/100) - 10:  # Keep 10% buffer
+            if energy_needed + nearest_energy_to_bss < (battery_now * (100 - ev.battery.cycle * 0.025)/100) - 5:  # Keep 5% buffer
                 order = Order(self.order_system.total_order + 1)
                 order.status = 'on going'
                 order.order_origin_lat = order_origin_lat
@@ -377,8 +378,9 @@ class Simulation:
                 order.order_destination_lon = order_destination_lon
                 order.created_at = (self.start_time + timedelta(minutes=self.env.now)).isoformat()
                 order.assigned_motorbike_id = ev.id
-                order.distance = order_distance
-                order.cost = order_distance * 3000
+                order.distance = order_distance_real
+                order.energy_distance = (order_distance_real * 100) / 65
+                order.cost = order_distance_real * 3000
                 self.order_system.order_active.append(order)
                 self.order_system.total_order += 1
 
@@ -396,12 +398,18 @@ class Simulation:
     
     def find_nearest_station_energy(self, lat, lon):
         """Find energy needed to reach nearest battery station"""
+        station_lat = 0
+        station_lon = 0
         min_energy = float('inf')
         for station in self.battery_swap_station.values():
             distance, duration = get_distance_and_duration(lat,lon, station.lat, station.lon)
             energy = (distance / 65.0) * 100  # Convert to battery percentage
             if energy < min_energy:
                 min_energy = energy
+                station_lat = station.lat
+                station_lon = station.lon
+        min_distance, min_duration = get_distance_and_duration_real(lat,lon, station_lat, station_lon)
+        min_energy = (min_distance / 65.0) * 100
         return min_energy
 
     def find_nearest_station(self, ev):

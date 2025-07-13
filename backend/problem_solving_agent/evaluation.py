@@ -32,6 +32,6 @@ def evaluate(battery_swap_schedule):
             # print("BEG", (0.75 * beg))
             # print("waiting time", (0.25 * sched["waiting_time"]))
             # print("time", sched["waiting_time"])
-            total_score = total_score + ((0.4 * beg) - (0.6 * sched["waiting_time"]))
+            total_score = total_score + ((0.9 * beg) - (0.1 * sched["waiting_time"]))
 
     return total_score
