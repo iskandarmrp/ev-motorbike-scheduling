@@ -86,3 +86,53 @@ python simulation.py
 10. Hasil dari simulasi berupa beberapa grafik yang akan tersimpan dan dapat dilihat pada folder yang sama dengan simulation.py yang dijalankan.
 11. Setelah proses selesai, matikan semua terminal.
 12. Ulangi langkah-langkah sebelumnya untuk melakukan simulasi dengan skenario yang berbeda.
+
+### Simulasi dengan Menggunakan Sistem
+
+1. Aktifkan docker.
+2. Buka terminal 1 di root directory.
+3. Aktifkan OSRM dengan kode berikut pada terminal 1.
+```bash
+docker run -t -i -p 5000:5000 -v %cd%/osrm:/data osrm/osrm-backend osrm-routed --algorithm ch /data/java-latest.osrm
+```
+4. Buka terminal 2 di root directory.
+5. Aktifkan virtual environment pada terminal 2.
+6. Aktifkan backend dengan kode berikut pada terminal 2.
+```bash
+docker compose up --build
+```
+7. Buka terminal 3 di root directory.
+8. Aktifkan virtual environment pada terminal 3.
+9. Pindah ke simulasi dengan menggunakan sistem directory dengan kode berikut pada terminal 3.
+```bash
+cd simulation_testing/using_schedule
+```
+10. Jalankan simulasi dengan kode berikut pada terminal 3.
+```bash
+python simulation.py
+```
+11. Masukkan input berupa jumlah pengemudi dan jumlah stasiun penukaran baterai yang ingin disimulasikan pada terminal 3.
+12. Buka terminal 4 di root directory.
+13. Pindah ke frontend directory dengan kode berikut pada terminal 4.
+```bash
+cd frontend
+```
+14. Jalankan frontend dengan kode berikut pada terminal 4.
+```bash
+npm run start
+```
+15. Website dashboard admin dapat dilihat pada localhost.
+16. Masukkan username: admin dan password: admin123 untuk login pada website dashboard admin.
+17. Informasi mengenai pengemudi, stasiun penukaran baterai, dan jadwal penukaran dapat terlihat pada website dashboard admin.
+18. Simulasi yang berjalan pada terminal 3 akan berjalan selama 3 kali, tunggu simulasi sampai selesai.
+19. Hasil dari simulasi berupa beberapa grafik yang akan tersimpan dan dapat dilihat pada folder yang sama dengan simulation.py yang dijalankan.
+20. Setelah proses selesai, non-aktifkan backend dan jalankan kode berikut pada terminal 2.
+```bash
+docker compose down -v
+```
+21. Matikan semua terminal.
+22. Ulangi langkah-langkah sebelumnya untuk melakukan simulasi dengan skenario yang berbeda.
+
+---
+
+Setelah kedua simulasi selesai, hasil dari kedua simulasi dapat dibandingkan untuk mengevaluasi efektivitas dari sistem ini.
