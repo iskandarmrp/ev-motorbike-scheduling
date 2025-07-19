@@ -58,3 +58,31 @@ npm install
 ``` bash
 npm run build
 ```
+
+---
+
+## Simulasi
+
+### Simulasi Tanpa Menggunakan Sistem
+
+1. Aktifkan docker.
+2. Buka terminal 1 di root directory.
+3. Aktifkan OSRM dengan kode berikut pada terminal 1.
+```bash
+docker run -t -i -p 5000:5000 -v %cd%/osrm:/data osrm/osrm-backend osrm-routed --algorithm ch /data/java-latest.osrm
+```
+4. Buka terminal 2 di root directory.
+5. Aktifkan virtual environment pada terminal 2.
+6. Pindah ke simulasi tanpa menggunakan sistem directory dengan kode berikut pada terminal 2.
+```bash
+cd simulation_testing/no_schedule
+```
+7. Jalankan simulasi dengan kode berikut pada terminal 2.
+```bash
+python simulation.py
+```
+8. Masukkan input berupa jumlah pengemudi dan jumlah stasiun penukaran baterai yang ingin disimulasikan pada terminal 2.
+9. Simulasi akan berjalan selama 3 kali, tunggu simulasi sampai selesai.
+10. Hasil dari simulasi berupa beberapa grafik yang akan tersimpan dan dapat dilihat pada folder yang sama dengan simulation.py yang dijalankan.
+11. Setelah proses selesai, matikan semua terminal.
+12. Ulangi langkah-langkah sebelumnya untuk melakukan simulasi dengan skenario yang berbeda.
