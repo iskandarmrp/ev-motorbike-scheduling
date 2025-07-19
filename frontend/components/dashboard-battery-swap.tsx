@@ -213,7 +213,7 @@ export function DashboardBatterySwap() {
   const [activityLogs, setActivityLogs] = useState<string[]>([]);
   const [batteries, setBatteries] = useState<Battery[]>(mockBatteries);
 
-  // Helper functions for safe data conversion - FIXED VERSION
+  // Helper functions for safe data conversion
   const safeString = (value: any, defaultValue = ""): string => {
     if (value === null || value === undefined || value === "")
       return defaultValue;
@@ -231,7 +231,7 @@ export function DashboardBatterySwap() {
     return Array.isArray(value) ? value : [];
   };
 
-  // Transform API data to component format - FIXED VERSION
+  // Transform API data to component format
   const transformApiData = (data: BatterySwapStatus) => {
     const batteryMap = new Map(safeArray(data.batteries).map((b) => [b.id, b]));
     const motorbikeMap: Record<string, MotorbikeState> = {};
@@ -395,7 +395,7 @@ export function DashboardBatterySwap() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      console.warn("🔐 Token tidak ditemukan, redirect ke login");
+      console.warn("Token tidak ditemukan, redirect ke login");
       router.push("/");
       return;
     }
@@ -407,7 +407,7 @@ export function DashboardBatterySwap() {
 
     socket.onopen = () => {
       setError(null);
-      console.log("✅ WebSocket connected");
+      console.log("WebSocket connected");
     };
 
     socket.onmessage = (event) => {
@@ -445,7 +445,7 @@ export function DashboardBatterySwap() {
     localStorage.removeItem("token");
 
     if (socketRef.current) {
-      socketRef.current.close(); // ⛔ force close koneksi WebSocket
+      socketRef.current.close(); // force close koneksi WebSocket
       socketRef.current = null;
     }
 

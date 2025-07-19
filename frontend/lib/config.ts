@@ -1,7 +1,7 @@
 // Check if we're in a browser environment
 const isBrowser = typeof window !== "undefined"
 
-// Check if we're in a preview environment (v0.dev)
+// Check if we're in a preview environment
 const isPreview =
   isBrowser && (window.location.hostname.includes("v0.dev") || window.location.hostname.includes("vercel.app"))
 
