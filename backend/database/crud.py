@@ -100,17 +100,17 @@ def get_all_stations(db: Session):
     return result
 
 def get_all_batteries(db: Session):
-    # Kendaraan: baterai → kendaraan.id
+    # Baterai dari kendaraan
     kendaraan_map = {
         k.id_baterai: k.id for k in db.query(Kendaraan).all()
     }
 
-    # Slot: baterai → (stasiun_id, nomor_slot)
+    # Baterai dari slot
     slot_map = {}
     for s in db.query(SlotStasiunPenukaranBaterai).all():
         slot_map[s.id_baterai] = (s.id_stasiun_penukaran_baterai, s.nomor_slot)
 
-    # Jadwal aktif: cari slot yang sedang dibooking
+    # Jadwal aktif
     booked_slots = set()
     for j in db.query(JadwalPenukaran).filter(JadwalPenukaran.status == "on going").all():
         booked_slots.add((j.id_slot_stasiun_penukaran_baterai, j.nomor_slot))

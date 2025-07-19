@@ -27,7 +27,7 @@ def seed_admin():
         admin = models.Admin(username="admin", password=hashed, nama="Admin")
         db.add(admin)
     else:
-        admin.password = hashed  # ← paksa reset password
+        admin.password = hashed
         admin.nama = "Admin"
 
     db.commit()

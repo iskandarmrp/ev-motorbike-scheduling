@@ -30,7 +30,7 @@ app.include_router(order.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ganti ke ['http://localhost:3000'] di production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -142,7 +142,7 @@ async def get_jadwal_penukaran():
         fleet_ev_motorbikes = crud.get_all_motorbikes(db)
         schedules = crud.get_all_schedules(db)
         battery_swap_stations = crud.get_all_stations(db)
-        batteries = crud.get_all_batteries(db)  # <-- FIXED here
+        batteries = crud.get_all_batteries(db)
         orders = crud.get_all_orders(db, status="on going")
 
         ev_dict, station_list = get_fleet_dict_and_station_list(
@@ -240,8 +240,8 @@ async def websocket_status(websocket: WebSocket):
                     "order_failed": crud.get_all_orders(db, status="failed"),
                     "swap_schedules": crud.get_all_schedules(db),
                     "total_order": len(crud.get_all_orders(db)),
-                    "total_waiting": total_waiting,  # jumlah waiting_time > 0
-                    "average_waiting_time": average_waiting_time,  # rata-rata waiting_time 
+                    "total_waiting": total_waiting,
+                    "average_waiting_time": average_waiting_time,
                     "total_low_battery_idle": total_low_battery_idle,
                     "time_now": datetime.now().isoformat(),
                 }

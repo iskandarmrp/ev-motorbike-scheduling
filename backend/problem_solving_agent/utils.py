@@ -12,7 +12,6 @@ def queue_update(solution, ev, battery_swap_station, charging_rate, required_bat
 
     swaps = []
 
-    # 1. Masukkan jadwal tetap (dari ev['swap_schedule']) dulu ke slot_timeline
     # Kumpulkan semua jadwal tetap dari ev['swap_schedule']
     temp_queue = {}
 
@@ -35,17 +34,17 @@ def queue_update(solution, ev, battery_swap_station, charging_rate, required_bat
         for key, entries in temp_queue.items()
     }
 
-    # 2. Kumpulkan EV dari solusi yang assigned, tapi hanya yang tidak punya jadwal tetap
+    # Kumpulkan EV dari solusi yang assigned, tapi hanya yang tidak punya jadwal tetap
     for ev_id, sched in solution.items():
         if sched['assigned'] and not ev[ev_id]['swap_schedule']:
             arrival_time = sched['travel_time']
             key = (sched['battery_station'], sched['slot'])
             swaps.append((arrival_time, ev_id, key))
 
-    # 3. Urutkan berdasarkan arrival_time (yang datang duluan diproses lebih dulu)
+    # Urutkan berdasarkan arrival_time (yang datang duluan diproses lebih dulu)
     swaps.sort()
 
-    # 4. Proses masing-masing EV, hitung ulang waiting_time dan received_battery
+    # Proses masing-masing EV, hitung ulang waiting_time dan received_battery
     for _, ev_id, key in swaps:
         sched = solution[ev_id]
         station_idx, slot_idx = key
@@ -192,10 +191,8 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
         station_list = [(sid, station) for sid, station in battery_swap_station.items()]
         haversine_results = []
 
-        # print(station_list)
-
         for station_id, station in station_list:
-            # Tentukan titik awal
+            # Estimasi jarak awal
             if ev["status"] == "idle":
                 start_lat, start_lon = ev["current_lat"], ev["current_lon"]
                 distance, _ = haversine_distance(start_lat, start_lon, station["lat"], station["lon"])
@@ -235,10 +232,10 @@ def update_energy_distance_and_travel_time_all(fleet_ev_motorbikes, battery_swap
                 "start_lon": start_lon,
             })
 
-        # Ambil 3 BSS terdekat
+        # Ambil 8 BSS terdekat
         top8 = sorted(haversine_results, key=lambda x: x["energy"])[:8]
 
-        # Hitung ulang pakai OSRM hanya untuk 3
+        # Hitung ulang pakai OSRM hanya untuk 8
         for t in top8:
             if ev["status"] == 'idle':
                 d, dur = get_distance_and_duration(
@@ -357,7 +354,7 @@ def convert_ev_fleet_to_dict(fleet_ev_motorbikes):
 
 #
 def get_station_dict_from_list(battery_swap_stations, batteries):
-    # Buat map baterai berdasarkan ID-nya
+    # Buat map baterai berdasarkan ID
     battery_map = {b["id"]: b for b in batteries}
 
     station_dict = {}
@@ -366,7 +363,7 @@ def get_station_dict_from_list(battery_swap_stations, batteries):
         lat = station["latitude"]
         lon = station["longitude"]
 
-        # Ambil battery info dari baterai yang id-nya ada di slots
+        # Ambil battery info dari baterai yang id nya ada di slots
         battery_infos = []
         for battery_id in station["slots"]:
             battery = battery_map.get(battery_id)
@@ -389,8 +386,6 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
     fleet_dict = {}
     station_list = {}
 
-    # print(orders)
-
     if orders:
         order_map = {
             int(order["assigned_motorbike_id"]): {
@@ -405,8 +400,6 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
         }
     else:
         order_map = {}
-
-    # print(schedules)
     
     if schedules:
         swap_schedule_map = {
@@ -455,14 +448,8 @@ def get_fleet_dict_and_station_list(fleet_ev_motorbikes, schedules, orders, batt
     fleet_dict = dict(sorted(fleet_dict.items()))
     station_dict = dict(sorted(station_dict.items()))
 
-    # print(fleet_dict)
-    # print(station_dict)
-
     update_energy_distance_and_travel_time_all(fleet_dict, station_dict)
     fleet_dict = convert_fleet_ev_motorbikes_to_dict(fleet_dict)
-    station_list = convert_station_dict_to_list(station_dict)
-
-    # print(station_dict)
-    
+    station_list = convert_station_dict_to_list(station_dict)    
 
     return fleet_dict, station_list

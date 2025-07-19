@@ -38,7 +38,6 @@ def simulated_annealing(
                 best_solution = new_solution
                 best_score = new_score
 
-        # print(f"Iter {iteration+1}: Best Score = {round(best_score, 4)}")
         T *= alpha
 
     return best_solution, best_score
@@ -48,28 +47,11 @@ def random_destroy(solution, ev, destroy_ratio=0.1):
     keys = [k for k in destroyed if destroyed[k].get("assigned") and not ev[k].get("swap_schedule")]
 
     if not keys:
-        return destroyed, []  # tidak ada yang bisa dihancurkan
+        return destroyed, []  # tidak ada yang bisa didestroy
 
     upper_bound = max(1, int(len(keys) * destroy_ratio))
-    num_remove = random.randint(1, upper_bound)  # jumlah yang di-destroy dipilih acak
+    num_remove = random.randint(1, upper_bound)  # jumlah yang didestroy dipilih acak
     to_remove = random.sample(keys, num_remove)
-
-    # for k in to_remove:
-    #     destroyed[k] = {
-    #         'assigned': False,
-    #         'battery_now': destroyed[k]['battery_now'],
-    #         'battery_cycle': destroyed[k]['battery_cycle'],
-    #         'battery_station': None,
-    #         'slot': None,
-    #         'energy_distance': None,
-    #         'travel_time': None,
-    #         'waiting_time': None,
-    #         'exchanged_battery': None,
-    #         'received_battery': None,
-    #         'received_battery_cycle': None
-    #     }
-    # print("Destroy:", destroyed)
-    # print("to remove:", to_remove)
 
     return destroyed, to_remove
 
@@ -87,29 +69,12 @@ def destroy_high_waiting_time(solution, ev, destroy_ratio=0.1):
     if not keys:
         return destroyed, []
 
-    # Urutkan keys berdasarkan waiting_time descending
+    # Urutkan keys berdasarkan waiting_time
     sorted_keys = sorted(keys, key=lambda k: destroyed[k]["waiting_time"], reverse=True)
 
     upper_bound = max(1, int(len(sorted_keys)))
-    num_remove = random.randint(1, upper_bound)  # jumlah yang di-destroy dipilih acak
+    num_remove = random.randint(1, upper_bound)  # jumlah yang didestroy dipilih acak
     to_remove = sorted_keys[:num_remove]  # Ambil waiting_time terbesar
-
-    # for k in to_remove:
-    #     destroyed[k] = {
-    #         'assigned': False,
-    #         'battery_now': destroyed[k]['battery_now'],
-    #         'battery_cycle': destroyed[k]['battery_cycle'],
-    #         'battery_station': None,
-    #         'slot': None,
-    #         'energy_distance': None,
-    #         'travel_time': None,
-    #         'waiting_time': None,
-    #         'exchanged_battery': None,
-    #         'received_battery': None,
-    #         'received_battery_cycle': None
-    #     }
-    # print("Destroy:", destroyed)
-    # print("to remove:", to_remove)
 
     return destroyed, to_remove
 
@@ -126,7 +91,6 @@ def random_repair(solution, ev, battery_swap_station, charging_rate, required_ba
         if valid_options:
             station_idx, slot_idx, ed, tt = random.choice(valid_options)
 
-            # degradation_factor = 1 + (0.00025 * data['battery_cycle'])
             actual_percentage = 1 - (0.00025 * data['battery_cycle'])
             degradation_factor = 1 / actual_percentage
             exchanged_battery = data['battery_now'] - ed * degradation_factor
@@ -173,7 +137,6 @@ def available_repair(solution, ev, battery_swap_station, charging_rate, required
         if valid_options:
             station_idx, slot_idx, ed, tt = random.choice(valid_options)
 
-            # degradation_factor = 1 + (0.00025 * data['battery_cycle'])
             actual_percentage = 1 - (0.00025 * data['battery_cycle'])
             degradation_factor = 1 / actual_percentage
             exchanged_battery = data['battery_now'] - ed * degradation_factor
@@ -240,13 +203,6 @@ def alns_ev_scheduler(
         destroy_idx = roulette_select(destroy_weights)
         repair_idx = roulette_select(repair_weights)
 
-        # print(f"[DEBUG] Iter {it} - destroy: {destroy_ops[destroy_idx].__name__}, repair: {repair_ops[repair_idx].__name__}")
-
-        # result = destroy_ops[destroy_idx](current, ev)
-        # print(f"[DEBUG] Result: {result}")
-        # print(f"[DEBUG] Type: {type(result)}, Length: {len(result) if hasattr(result, '__len__') else 'N/A'}")
-
-        # destroyed, to_remove = result  # ← ini yang error
         destroyed, to_remove = destroy_ops[destroy_idx](current, ev)
 
         repaired = repair_ops[repair_idx](destroyed, ev, battery_swap_station, charging_rate, required_battery_threshold, to_remove)
@@ -269,9 +225,6 @@ def alns_ev_scheduler(
             repair_weights = [1.0]
             destroy_scores = [0.0 for _ in destroy_ops]
             repair_scores = [0.0 for _ in repair_ops]
-
-        # if (it + 1) % 400 == 0:
-        #     current = random_initialization(battery_swap_station, ev, threshold, charging_rate, required_battery_threshold)
 
         print(f"[{it}] Best score: {best_score}")
         history.append(best_score)
