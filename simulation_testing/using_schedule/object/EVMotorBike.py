@@ -38,9 +38,6 @@ SPEED_BY_HOUR = {
 }
 
 def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=3):
-    """
-    Get route with retry logic and fallback to mock implementation
-    """
     for attempt in range(max_retries):
         try:
             url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=full&geometries=polyline"
@@ -78,11 +75,7 @@ def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lo
     return get_mock_route(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def get_mock_route(origin_lat, origin_lon, destination_lat, destination_lon):
-    """
-    Mock route implementation using haversine distance
-    """
-    # Calculate distance using haversine formula
-    R = 6371  # Earth's radius in kilometers
+    R = 6371
     
     lat1_rad = math.radians(origin_lat)
     lon1_rad = math.radians(origin_lon)

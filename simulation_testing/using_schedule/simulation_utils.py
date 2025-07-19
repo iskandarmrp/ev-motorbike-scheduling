@@ -58,7 +58,6 @@ def get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, dest
     return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon):
-    """Haversine distance calculation"""
     R = 6371
     lat1_rad, lon1_rad = math.radians(origin_lat), math.radians(origin_lon)
     lat2_rad, lon2_rad = math.radians(destination_lat), math.radians(destination_lon)

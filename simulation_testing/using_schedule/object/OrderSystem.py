@@ -42,7 +42,6 @@ class OrderSystem:
         self.last_schedule_event = event
 
     def generate_realistic_coordinates(self, is_central_south=True):
-        """Generate coordinates based on Jakarta geographic distribution"""
         if is_central_south:
             # 60% chance - Central/South Jakarta with hotspot concentration
             if random.random() < 0.4:  # 40% of central orders near hotspots
@@ -66,20 +65,15 @@ class OrderSystem:
         return self.snap_to_road(lat, lon)
 
     def generate_order_distance(self):
-        """Generate realistic order distance (1-10km, mostly around 5km)"""
         # Use normal distribution centered at 5km with std dev of 2km
         distance = np.random.normal(5.0, 2.0)
         # Clamp between 1-10km
         return max(1.0, min(10.0, distance))
 
     def generate_realistic_orders(self, env, start_time, simulation):
-        """Generate orders based on realistic Jakarta patterns"""
         while True:
             # Get current order rate (lambda for Poisson distribution)
             current_lambda = simulation.get_current_order_rate()
-            
-            # Generate orders using Poisson distribution
-            # Lambda is orders per hour, so divide by 60 for per-minute rate
             lambda_per_minute = current_lambda
             
             # Use Poisson distribution to determine number of orders this minute
@@ -98,11 +92,9 @@ class OrderSystem:
                         hour = simulation.get_current_hour()
                         print(f"[{env.now:.0f}min - Hour {hour:02d}] 📦 Order {order.id} created (Total: {self.total_order})")
             
-            # Wait for next minute
             yield env.timeout(1)
 
     def create_realistic_order(self, start_time):
-        """Create a single realistic order"""
         try:
             # Determine if order is in central/south Jakarta (60% probability)
             is_central = random.random() < 0.6
@@ -132,11 +124,6 @@ class OrderSystem:
 
             distance, duration = self.get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2)
 
-            # print("distance order", distance)
-            # print("Order distance nepu", order_distance)
-            # print("Order distance asli", distance)
-            # print("Energy yang dibutuhkan nepu", (order_distance / 65.0) * 100)
-            # print("Energy yang dibutuhkan asli", (distance / 65.0) * 100)
             order.energy_distance = (distance / 65.0) * 100
             order.distance = distance
             order.cost = distance * 3000
@@ -148,7 +135,6 @@ class OrderSystem:
             return None
 
     def search_driver(self, env, fleet_ev_motorbikes, battery_swap_station, start_time):
-        """Enhanced driver search with realistic constraints"""
         while True:
             if self.last_schedule_event and not self.last_schedule_event.processed:
                 print("Sabar nunggu schedule")
@@ -160,7 +146,7 @@ class OrderSystem:
                 orders_to_process = self.order_search_driver
                 
                 for order in orders_to_process:
-                    # Get available EVs (less restrictive criteria)
+                    # Get available EVs
                     available_evs = [
                         ev for ev in fleet_ev_motorbikes.values()
                         if (ev.status == "idle" and 
@@ -169,7 +155,7 @@ class OrderSystem:
                     
                     if not available_evs:
                         order.searching_time += 1
-                        if order.searching_time >= 20:  # Reduced timeout for realism
+                        if order.searching_time >= 20:
                             order.status = "failed"
                             order.completed_at = (start_time + timedelta(minutes=env.now)).isoformat()
                             self.order_search_driver.remove(order)
@@ -204,7 +190,6 @@ class OrderSystem:
             yield env.timeout(1)
 
     def find_best_ev_for_order(self, order, available_evs, battery_swap_station):
-        """Find the best EV for a specific order with realistic constraints"""
         best_evs = []
         min_distance = float('inf')
 
@@ -219,7 +204,7 @@ class OrderSystem:
                 order.order_origin_lat, order.order_origin_lon
             )
 
-            # Prefer closer EVs (more realistic)
+            # Prefer closer EVs
             if distance_to_order < min_distance:
                 # Calculate total energy needed (100% battery = 65km)
                 total_energy_needed = ((distance_to_order / 65.0) * 100) + nearest_energy_to_bss + order_distance
@@ -247,7 +232,6 @@ class OrderSystem:
         return best_ev
     
     def find_nearest_station_energy(self, lat, lon, battery_swap_station):
-        """Find energy needed to reach nearest battery station"""
         station_lat = 0
         station_lon = 0
         min_energy = float('inf')
@@ -263,7 +247,6 @@ class OrderSystem:
         return min_energy
 
     def get_distance_and_duration(self, origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2):
-        """Get distance and duration with fallback"""
         # Pakai OSRM kelamaan
 
         # try:
@@ -283,7 +266,6 @@ class OrderSystem:
         return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
     
     def get_distance_and_duration_real(self, origin_lat, origin_lon, destination_lat, destination_lon, max_retries=2):
-        """Get distance and duration with fallback"""
         # Khusus Distance Order
 
         try:
@@ -303,7 +285,6 @@ class OrderSystem:
         return self.haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
         
     def haversine_distance(self, origin_lat, origin_lon, destination_lat, destination_lon):
-        """Haversine distance calculation"""
         R = 6371
         lat1_rad, lon1_rad = math.radians(origin_lat), math.radians(origin_lon)
         lat2_rad, lon2_rad = math.radians(destination_lat), math.radians(destination_lon)
@@ -318,7 +299,6 @@ class OrderSystem:
         return distance_km, duration_min
 
     def snap_to_road(self, lat, lon, max_retries=1):
-        """Snap coordinates to road"""
         try:
             url = f"{OSRM_URL}/nearest/v1/driving/{lon},{lat}"
             response = requests.get(url, timeout=2)

@@ -181,30 +181,25 @@ class Simulation:
         self.setup_battery_swap_station(df)
 
     def get_current_hour(self):
-        """Get current simulation hour (0-23)"""
         return int(self.env.now // 60) % 24
 
     def get_current_speed(self):
-        """Get current average speed based on time of day"""
         hour = self.get_current_hour()
-        return SPEED_BY_HOUR.get(hour, 30.0)  # Default to 25 km/h if not found
+        return SPEED_BY_HOUR.get(hour, 30.0)  # Default to 30 km/h if not found
 
     def get_current_order_rate(self):
-        """Get current order generation rate (lambda for Poisson)"""
         hour = self.get_current_hour()
         return ORDER_LAMBDA_BY_HOUR.get(hour, 10)  # Default to 10 orders/hour
 
     def setup_fleet_ev_motorbike(self):
-        """Setup realistic EV fleet with scheduling support"""
         for i in range(self.jumlah_ev_motorbike):
             ev = self.ev_generator_realistic(i)
             self.fleet_ev_motorbikes[i] = ev
             self.ev_waiting_times[i] = 0
 
     def generate_realistic_coordinates(self, is_central_south=True):
-        """Generate coordinates based on geographic distribution"""
         if is_central_south:
-            # 60% chance - Central/South Jakarta with hotspot concentration
+            # 60% chance - Central/South Jakarta
             if random.random() < 0.4:  # 40% of central orders near hotspots
                 hotspot = random.choice(HOTSPOT_CENTERS)
                 # Generate coordinates within 2km of hotspot
@@ -226,14 +221,12 @@ class Simulation:
         return snap_to_road(lat, lon)
 
     def generate_order_distance(self):
-        """Generate realistic order distance (1-10km, mostly around 5km)"""
         # Use normal distribution centered at 5km with std dev of 2km
         distance = np.random.normal(5.0, 2.0)
         # Clamp between 1-10km
         return max(1.0, min(10.0, distance))
 
     def generate_nearby_coordinates(self, lat, lon, max_distance_km=2.0):
-        """Generate koordinat dalam radius tertentu dari lat/lon (dalam km)"""
         bearing = random.uniform(0, 2 * math.pi)
         distance = random.uniform(0, max_distance_km)
         
@@ -243,7 +236,6 @@ class Simulation:
         return lat + lat_offset, lon + lon_offset
 
     def ev_generator_realistic(self, ev_id):
-        """Generate EV with realistic parameters and scheduling support"""
         max_speed = 60  # Max Speed
         battery_capacity = 100
         
@@ -326,7 +318,6 @@ class Simulation:
         return ev
 
     def find_nearest_station_energy(self, lat, lon):
-        """Find energy needed to reach nearest battery station"""
         station_lat = 0
         station_lon = 0
         min_energy = float('inf')
@@ -342,7 +333,6 @@ class Simulation:
         return min_energy
 
     def setup_battery_swap_station(self, df):
-        """Setup battery swap stations"""
         station_id = 0
         
         # Use existing stations from CSV up to the requested number
@@ -393,8 +383,6 @@ class Simulation:
             station_id += 1
 
     def calculate_metrics(self):
-        """Calculate comprehensive metrics"""
-        # Scheduling-based metrics (from simulation.py)
         total_waiting_time = sum(
             schedule.get('waiting_time', 0) 
             for schedule in self.swap_schedules.values()
@@ -423,7 +411,6 @@ class Simulation:
                 orders_completed, orders_failed, average_battery_level)
 
     def scheduling(self):
-        """Battery swap scheduling using simulated annealing (from simulation.py)"""
         while True:
             yield self.env.timeout(1)
 
@@ -486,7 +473,6 @@ class Simulation:
                 self.last_schedule_event.succeed()
 
     def sync_data_to_server(self):
-        """Sinkronisasi sinkron (blocking) setiap 5 menit simulasi"""
         while True:
             yield self.env.timeout(5)
             self.sync_done_event = self.env.event()
@@ -518,7 +504,6 @@ class Simulation:
                 self.sync_done_event.succeed()
 
     def hourly_statistics(self):
-        """Collect hourly statistics"""
         while True:
             yield self.env.timeout(60)  # Every hour
             
@@ -547,7 +532,6 @@ class Simulation:
                   f"Total Waiting: {stats['total_waiting_time']:.1f}min")
 
     def metrics_monitor(self):
-        """Monitor and collect metrics every 30 time units"""
         while True:
             yield self.env.timeout(30)
             
@@ -649,7 +633,6 @@ class Simulation:
             ]
 
     def get_current_station_loads(self):
-        """Get current station loads (EVs waiting + swapping at each station)"""
         station_loads = {}
         for station_id in self.battery_swap_station.keys():
             count = 0
@@ -662,7 +645,6 @@ class Simulation:
         return station_loads
 
     def track_station_loads(self):
-        """Track station loads every 10 time units"""
         while True:
             yield self.env.timeout(10)
         
@@ -674,7 +656,6 @@ class Simulation:
                 self.station_queues[station_id].append(load)
 
     def monitor_status(self):
-        """Monitor system status"""
         while True:
             yield self.env.timeout(60)
             
@@ -744,7 +725,6 @@ class Simulation:
             print(f"Scheduling - Active Swaps: {active_schedules}, Total Waiting Time: {total_waiting_time:.1f}min")
 
     def calculate_final_metrics(self):
-        """Calculate final simulation metrics"""
         # Average operating profit of drivers
         total_income = sum(ev.daily_income for ev in self.fleet_ev_motorbikes.values())
         avg_operating_profit = total_income / len(self.fleet_ev_motorbikes) if self.fleet_ev_motorbikes else 0
@@ -785,7 +765,7 @@ class Simulation:
         self.env.process(self.track_station_loads())
         self.env.process(self.metrics_monitor())
         self.env.process(self.hourly_statistics())
-        self.env.process(self.scheduling())  # Add scheduling process
+        self.env.process(self.scheduling())
         self.env.process(self.update_status())
 
         # Start EV processes
@@ -796,12 +776,11 @@ class Simulation:
         for station in self.battery_swap_station.values():
             self.env.process(station.charge_batteries(self.env))
 
-        # Start order system processes (realistic)
+        # Start order system processes
         self.env.process(self.order_system.generate_realistic_orders(self.env, self.start_time, self))
         self.env.process(self.order_system.search_driver(self.env, self.fleet_ev_motorbikes, self.battery_swap_station, self.start_time))
 
     def run(self, max_time=1440):
-        """Run realistic simulation with scheduling for 24 hours"""
         self.setup_fleet_ev_motorbike()
         self.simulate()
         
@@ -817,7 +796,6 @@ class Simulation:
 
 
 def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
-    """Run multiple simulations and collect results"""
     results = []
     
     for run in range(num_runs):
@@ -848,7 +826,6 @@ def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
     return results
 
 def generate_analysis_graphs(results):
-    """Generate comprehensive analysis graphs"""
     metrics = ['avg_operating_profit', 'num_drivers_waiting', 'avg_waiting_time']
     titles = [
         'Average Operating Profit of Drivers',
@@ -951,7 +928,7 @@ def generate_driver_waiting_histogram(result, index=0):
 
 if __name__ == '__main__':
     # Get user input for parameters
-    print("Enhanced Jakarta EV Fleet Simulation - FIXED VERSION")
+    print("Jakarta EV Fleet Simulation using Scheduling System")
     print("="*60)
     
     try:
