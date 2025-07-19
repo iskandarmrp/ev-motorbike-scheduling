@@ -34,12 +34,9 @@ def get_distance_and_duration(origin_lat, origin_lon, destination_lat, destinati
     #             continue
     
     # # Fallback to haversine calculation
-    # print(f"Falling back to haversine calculation for ({origin_lat}, {origin_lon}) -> ({destination_lat}, {destination_lon})")
     return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, destination_lon):
-    # OSRM Kelamaan
-
     try:
         url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=false"
             
@@ -62,10 +59,7 @@ def get_distance_and_duration_real(origin_lat, origin_lon, destination_lat, dest
     return haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon):
-    """
-    Calculate distance using haversine formula as fallback
-    """
-    R = 6371  # Earth's radius in kilometers
+    R = 6371
     
     lat1_rad = math.radians(origin_lat)
     lon1_rad = math.radians(origin_lon)
@@ -84,9 +78,6 @@ def haversine_distance(origin_lat, origin_lon, destination_lat, destination_lon)
     return distance_km, duration_min
 
 def snap_to_road(lat, lon, max_retries=2):
-    """
-    Snap coordinates to road with retry logic and fallback
-    """
     for attempt in range(max_retries):
         try:
             url = f"{OSRM_URL}/nearest/v1/driving/{lon},{lat}"

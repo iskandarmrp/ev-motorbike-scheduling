@@ -13,7 +13,6 @@ import os
 
 sys.path.append(os.path.dirname(__file__))
 
-# Import the original classes and modify them
 from object.EVMotorbike import EVMotorbike
 from object.BatterySwapStation import BatterySwapStation
 from object.Battery import Battery
@@ -98,35 +97,32 @@ class Simulation:
         self.battery_registry = {}
         self.battery_counter = [0]
         
-        # Enhanced tracking
+        # tracking
         self.driver_waiting_times = defaultdict(list)
         self.station_waiting_times = defaultdict(list)
-        self.waiting_drivers = {}  # {ev_id: waiting_time}
-        self.station_queues = defaultdict(list)  # {station_id: [queue_lengths_over_time]}
+        self.waiting_drivers = {}
+        self.station_queues = defaultdict(list)
         self.total_drivers_waiting = 0
 
         self.waiting_time_tracking = []
         self.total_drivers_waiting_tracking = 0
         
-        # Station queue management
-        self.station_ev_queues = defaultdict(list)  # {station_id: [ev_id_queue]}
+        # Station queue
+        self.station_ev_queues = defaultdict(list)
         
         # Load CSV and setup stations
         df = pd.read_csv(csv_path)
         self.setup_battery_swap_station(df)
 
     def get_current_hour(self):
-        """Get current simulation hour (0-23)"""
         return int(self.env.now // 60) % 24
 
     def get_current_order_rate(self):
-        """Get current order generation rate"""
         hour = self.get_current_hour()
         return ORDER_LAMBDA_BY_HOUR.get(hour, 10)
 
-    # Station queue management methods
+    # Station queue
     def add_to_station_queue(self, ev_id, station_id):
-        """Add EV to station queue"""
         if not hasattr(self, 'station_ev_queues'):
             self.station_ev_queues = defaultdict(list)
         
@@ -135,7 +131,6 @@ class Simulation:
             print(f"EV {ev_id} added to station {station_id} queue. Queue length: {len(self.station_ev_queues[station_id])}")
 
     def remove_from_station_queue(self, ev_id, station_id):
-        """Remove EV from station queue"""
         if not hasattr(self, 'station_ev_queues'):
             self.station_ev_queues = defaultdict(list)
             return
@@ -145,7 +140,6 @@ class Simulation:
             print(f"EV {ev_id} removed from station {station_id} queue. Queue length: {len(self.station_ev_queues[station_id])}")
 
     def is_next_in_queue(self, ev_id, station_id):
-        """Check if EV is next in queue for battery swap"""
         if not hasattr(self, 'station_ev_queues'):
             self.station_ev_queues = defaultdict(list)
             return True
@@ -154,7 +148,6 @@ class Simulation:
         return len(queue) > 0 and queue[0] == ev_id
 
     def get_queue_position(self, ev_id, station_id):
-        """Get EV's position in station queue"""
         if not hasattr(self, 'station_ev_queues'):
             self.station_ev_queues = defaultdict(list)
             return 1
@@ -166,7 +159,6 @@ class Simulation:
             return 0
 
     def get_available_battery_for_ev(self, ev_id, station_id):
-        """Get available battery for EV that is >= 80% and not the EV's own battery"""
         station = self.battery_swap_station.get(station_id)
         if not station:
             return None, None
@@ -190,13 +182,11 @@ class Simulation:
         return best_battery, best_slot
 
     def update_waiting_driver(self, ev_id, actual_waiting_time):
-        """Update waiting driver with actual waiting time"""
         if ev_id in self.waiting_drivers:
             self.waiting_drivers[ev_id] = self.waiting_drivers[ev_id] + actual_waiting_time
             print(f"EV {ev_id} waited {actual_waiting_time:.1f} minutes for battery swap")
 
     def get_current_waiting_count(self):
-        """Get current number of EVs waiting at stations"""
         count = 0
         for ev in self.fleet_ev_motorbikes.values():
             if ev.status == 'waiting for battery':
@@ -204,7 +194,6 @@ class Simulation:
         return count
 
     def get_current_station_loads(self):
-        """Get current station loads (EVs waiting + swapping at each station)"""
         station_loads = {}
         for station_id in self.battery_swap_station.keys():
             count = 0
@@ -217,7 +206,6 @@ class Simulation:
         return station_loads
 
     def setup_battery_swap_station(self, df):
-        """Setup battery swap stations based on input parameters"""
         station_id = 0
         
         # Use existing stations from CSV up to the requested number
@@ -268,15 +256,13 @@ class Simulation:
             station_id += 1
 
     def setup_fleet_ev_motorbike(self):
-        """Setup enhanced EV fleet"""
         for i in range(self.jumlah_ev_motorbike):
             ev = self.ev_generator(i)
             self.fleet_ev_motorbikes[i] = ev
 
     def generate_realistic_coordinates(self, is_central_south=True):
-        """Generate coordinates based on geographic distribution"""
         if is_central_south:
-            # 60% chance - Central/South Jakarta with hotspot concentration
+            # 60% chance - Central/South Jakarta
             if random.random() < 0.4:  # 40% of central orders near hotspots
                 hotspot = random.choice(HOTSPOT_CENTERS)
                 # Generate coordinates within 2km of hotspot
@@ -298,14 +284,12 @@ class Simulation:
         return snap_to_road(lat, lon)
     
     def generate_order_distance(self):
-        """Generate realistic order distance (1-10km, mostly around 5km)"""
         # Use normal distribution centered at 5km with std dev of 2km
         distance = np.random.normal(5.0, 2.0)
         # Clamp between 1-10km
         return max(1.0, min(10.0, distance))
 
     def generate_nearby_coordinates(self, lat, lon, max_distance_km=2.0):
-        """Generate koordinat dalam radius tertentu dari lat/lon (dalam km)"""
         bearing = random.uniform(0, 2 * math.pi)
         distance = random.uniform(0, max_distance_km)
         
@@ -315,7 +299,6 @@ class Simulation:
         return lat + lat_offset, lon + lon_offset
 
     def ev_generator(self, ev_id):
-        """Generate enhanced EV with daily_income"""
         max_speed = 60 # Max Speed
         battery_capacity = 100
 
@@ -397,7 +380,6 @@ class Simulation:
         return ev
     
     def find_nearest_station_energy(self, lat, lon):
-        """Find energy needed to reach nearest battery station"""
         station_lat = 0
         station_lon = 0
         min_energy = float('inf')
@@ -413,7 +395,6 @@ class Simulation:
         return min_energy
 
     def find_nearest_station(self, ev):
-        """Find nearest battery swap station"""
         nearest_station = None
         min_distance = float('inf')
         
@@ -430,12 +411,10 @@ class Simulation:
         return nearest_station, min_distance
 
     def add_waiting_driver(self, ev_id, waiting_time):
-        """Track waiting driver"""
         self.waiting_drivers[ev_id] = waiting_time
         self.total_drivers_waiting += 1
 
     def track_station_loads(self):
-        """Track station loads every 10 time units"""
         while True:
             yield self.env.timeout(10)
         
@@ -447,7 +426,6 @@ class Simulation:
                 self.station_queues[station_id].append(load)
 
     def monitor_status(self):
-        """Monitor system status"""
         while True:
             yield self.env.timeout(60)
         
@@ -483,7 +461,6 @@ class Simulation:
                 f"Failed: {len(self.order_system.order_failed)}")
 
     def simulate(self):
-        """Run the simulation"""
         self.env.process(self.monitor_status())
         self.env.process(self.track_station_loads())
 
@@ -500,11 +477,10 @@ class Simulation:
         self.env.process(self.order_system.search_driver(self.env, self.fleet_ev_motorbikes, self.battery_swap_station, self.start_time))
 
     def run(self, max_time=1440):
-        """Run enhanced simulation"""
         self.setup_fleet_ev_motorbike()
         self.simulate()
         
-        print(f'Enhanced Jakarta Simulation starting with {self.jumlah_ev_motorbike} EVs and {self.jumlah_stations} stations for {max_time} minutes...')
+        print(f'Jakarta Simulation starting with {self.jumlah_ev_motorbike} EVs and {self.jumlah_stations} stations for {max_time} minutes...')
         
         # Run simulation
         self.env.run(until=max_time)
@@ -512,16 +488,15 @@ class Simulation:
         # Calculate final metrics
         results = self.calculate_final_metrics()
         
-        print(f"\nEnhanced simulation completed at {self.env.now} minutes")
+        print(f"\nSimulation completed at {self.env.now} minutes")
         return results
 
     def calculate_final_metrics(self):
-        """Calculate final simulation metrics"""
         # Average operating profit of drivers
         total_income = sum(ev.daily_income for ev in self.fleet_ev_motorbikes.values())
         avg_operating_profit = total_income / len(self.fleet_ev_motorbikes) if self.fleet_ev_motorbikes else 0
 
-        # Number of drivers who waited at swap stations (total throughout simulation)
+        # Number of drivers who waited at swap stations
         num_drivers_waiting = len(self.waiting_time_tracking)
         
         # Average waiting time of drivers at swap stations
@@ -540,12 +515,11 @@ class Simulation:
             'avg_operating_profit': avg_operating_profit,
             'num_drivers_waiting': num_drivers_waiting,
             'avg_waiting_time': avg_waiting_time,
-            'station_waiting_times': dict(self.station_waiting_times),  # convert defaultdict to dict
+            'station_waiting_times': dict(self.station_waiting_times),
             'driver_waiting_times': dict(self.driver_waiting_times),
         }
 
 def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
-    """Run multiple simulations and collect results"""
     results = []
     
     for run in range(num_runs):
@@ -566,7 +540,6 @@ def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
     return results
 
 def generate_analysis_graphs(results):
-    """Generate comprehensive analysis graphs"""
     metrics = ['avg_operating_profit', 'num_drivers_waiting', 'avg_waiting_time']
     titles = [
         'Average Operating Profit of Drivers',
@@ -605,7 +578,7 @@ def generate_analysis_graphs(results):
     
     # Print summary
     print("\n" + "="*80)
-    print("ENHANCED SIMULATION ANALYSIS SUMMARY")
+    print("SIMULATION ANALYSIS SUMMARY")
     print("="*80)
     
     for metric, title in zip(metrics, titles):
@@ -670,7 +643,7 @@ def generate_driver_waiting_histogram(result, index=0):
 
 if __name__ == '__main__':
     # Get user input for parameters
-    print("Enhanced Jakarta EV Fleet Simulation - FIXED VERSION")
+    print("Jakarta EV Fleet Simulation")
     print("="*60)
     
     try:
@@ -686,7 +659,7 @@ if __name__ == '__main__':
     print(f"\nRunning 3 simulations with {num_drivers} drivers and {num_stations} stations...")
     
     # Run simulations
-    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=1)
+    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3)
     
     # Generate analysis
     generate_analysis_graphs(results)

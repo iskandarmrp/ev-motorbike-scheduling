@@ -36,7 +36,6 @@ SPEED_BY_HOUR = {
 }
 
 def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lon, max_retries=3):
-    """Get route with retry logic and fallback to mock implementation"""
     for attempt in range(max_retries):
         try:
             url = f"{OSRM_URL}/route/v1/driving/{origin_lon},{origin_lat};{destination_lon},{destination_lat}?overview=full&geometries=polyline"
@@ -70,7 +69,6 @@ def get_route_with_retry(origin_lat, origin_lon, destination_lat, destination_lo
     return get_mock_route(origin_lat, origin_lon, destination_lat, destination_lon)
 
 def get_mock_route(origin_lat, origin_lon, destination_lat, destination_lon):
-    """Mock route implementation using haversine distance"""
     R = 6371
     lat1_rad = math.radians(origin_lat)
     lon1_rad = math.radians(origin_lon)
@@ -98,7 +96,6 @@ def get_mock_route(origin_lat, origin_lon, destination_lat, destination_lon):
     return distance_km, duration_min, polyline_points
 
 class EVMotorbike:
-    """Enhanced EVMotorBike based on original with daily_income and battery swap logic"""
     def __init__(self, id, max_speed_kmh, battery_capacity, battery_now, battery_cycle, current_lat, current_lon, battery_registry, battery_counter):
         self.id = id
         self.max_speed = max_speed_kmh
@@ -114,7 +111,6 @@ class EVMotorbike:
 
         self.last_status_before_swap = None
         
-        # Enhanced attributes
         self.daily_income = 0
         self.total_orders_completed = 0
         self.waiting_start_time = None
@@ -127,7 +123,6 @@ class EVMotorbike:
         battery_counter[0] += 1
 
     def needs_battery_swap(self):
-        """Check if EV needs battery swap (battery <= 20%)"""
         return self.battery.battery_now <= 20.0
 
     def drive(self, env, battery_swap_station, order_system, start_time, simulation):
@@ -166,7 +161,7 @@ class EVMotorbike:
                     print(f"[{env.now:.0f}min] EV {self.id} interrupting order due to low battery")
                     continue  # Will be handled by battery swap check above
                 
-                # Rest of heading to order logic...
+                # Rest of heading to order logic
                 distance, duration, route_polyline = get_route_with_retry(
                     self.current_lat, self.current_lon, 
                     self.order_schedule.get("order_origin_lat"), 
@@ -228,7 +223,7 @@ class EVMotorbike:
                     print(f"[{env.now:.0f}min] EV {self.id} interrupting order completion due to low battery")
                     continue  # Will be handled by battery swap check above
                 
-                # Rest of on order logic...
+                # Rest of on order logic
                 distance, duration, route_polyline = get_route_with_retry(
                     self.current_lat, self.current_lon, 
                     self.order_schedule.get("order_destination_lat"), 
@@ -393,7 +388,6 @@ class EVMotorbike:
                 yield env.timeout(1)
 
     def battery_swap(self, env, battery_swap_station, simulation):
-        """Perform battery swap and deduct cost"""
         station_id = self.swap_schedule["battery_station"]
         slot_index = self.swap_schedule["slot"]
 

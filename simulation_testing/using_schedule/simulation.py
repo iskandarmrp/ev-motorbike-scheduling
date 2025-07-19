@@ -864,7 +864,7 @@ def generate_analysis_graphs(results):
     
     # Print summary
     print("\n" + "="*80)
-    print("ENHANCED SIMULATION ANALYSIS SUMMARY")
+    print("SIMULATION ANALYSIS SUMMARY")
     print("="*80)
     
     for metric, title in zip(metrics, titles):
