@@ -21,6 +21,13 @@ Python 3.11.4
 
 ## Setup
 
+### Clone Repository
+
+Clone repository ini dengan kode berikut.
+```bash
+git clone https://github.com/iskandarmrp/ev-motorbike-scheduling.git
+```
+
 ### Setup Open Source Routing Machine
 
 1. Download OpenStreetMap data untuk Pulau Jawa pada https://download.geofabrik.de/asia/indonesia.html, Download file java-latest.osm.pbf.
@@ -39,9 +46,18 @@ docker run -t -v %cd%/osrm:/data osrm/osrm-backend osrm-contract /data/java-late
 ### Setup Virtual Environment
 
 1. Buka terminal di root directory.
-2. Buat virtual environment.
-3. Aktifkan virtual environment.
-4. Install seluruh library pada requirements.txt.
+2. Buat virtual environment dengan kode berikut.
+```bash
+python -m venv .venv
+```
+3. Aktifkan virtual environment dengan kode berikut.
+```bash
+.venv\Scripts\activate
+``` 
+4. Install seluruh library pada requirements.txt di dalam virtual environment dengan kode berikut.
+```bash
+pip install -r requirements.txt
+```
 
 ### Setup untuk Frontend
 
