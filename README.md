@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sistem ini bertujuan untuk meningkatkan keuntungan operasional pengemudi ojek online berbasis sepeda motor listrik dengan merancang sistem penjadwalan penukaran baterai secara otomatis. Sistem ini menggunakan algoritma **Adaptive Large Neighborhood Search (ALNS)** untuk mengoptimalkan penjadwalan berdasarkan kondisi lingkungan operasional.
+Sistem ini bertujuan untuk meningkatkan keuntungan operasional pengemudi ojek online berbasis sepeda motor listrik dengan merancang sistem penjadwalan penukaran baterai secara otomatis. Sistem ini menggunakan algoritma **Adaptive Large Neighborhood Search (ALNS)** untuk menyusun penjadwalan penukaran baterai untuk pengemudi ojek online pengguna sepeda motor listrik berdasarkan kondisi lingkungan operasional.
 
 Terdapat dua jenis simulasi:
 - **Simulasi tanpa menggunakan sistem**
