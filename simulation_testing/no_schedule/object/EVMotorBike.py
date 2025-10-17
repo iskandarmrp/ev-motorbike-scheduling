@@ -116,6 +116,10 @@ class EVMotorbike:
         self.waiting_start_time = None
         self.queue_position = None  # Track position in station queue
 
+        self.waiting_time_tracking_id = None
+        self.total_waiting_time = 0
+        self.num_waiting = 0
+
         self.battery.id = copy.deepcopy(battery_counter[0])
         self.battery.location = 'motor'
         self.battery.location_id = copy.deepcopy(self.id)
@@ -125,7 +129,7 @@ class EVMotorbike:
     def needs_battery_swap(self):
         return self.battery.battery_now <= 20.0
 
-    def drive(self, env, battery_swap_station, order_system, start_time, simulation):
+    def drive(self, env, driver_waiting_time_tracking, battery_swap_station, order_system, start_time, simulation):
         while True:
             if self.online_status == 'online':
                 # Priority check: Force battery swap if battery <= 20%
@@ -360,6 +364,12 @@ class EVMotorbike:
                 if self.waiting_start_time is None:
                     self.waiting_start_time = env.now
                     simulation.add_waiting_driver(self.id, 0)  # Will be updated when done waiting
+
+                if self.waiting_time_tracking_id is None:
+                    self.waiting_time_tracking_id = len(driver_waiting_time_tracking)
+                    driver_waiting_time_tracking[self.waiting_time_tracking_id] = 1
+                    self.total_waiting_time += 1
+                    self.num_waiting += 1
                 
                 # Check if it's this EV's turn (first in queue)
                 if simulation.is_next_in_queue(self.id, battery_station_id):
@@ -370,19 +380,24 @@ class EVMotorbike:
                         # Battery available, perform swap
                         self.swap_schedule["slot"] = slot_idx
                         self.status = 'battery swap'
+                        self.waiting_time_tracking_id = None
                         print(f"[{env.now:.0f}min] EV {self.id} starting battery swap - Available battery: {available_battery.battery_now:.1f}%")
                     else:
                         # No suitable battery available, wait
                         print(f"[{env.now:.0f}min] EV {self.id} lagi nunggu baterai")
+                        driver_waiting_time_tracking[self.waiting_time_tracking_id] += 1
+                        self.total_waiting_time += 1
                         yield env.timeout(1)
                 else:
                     # Not next in queue, just wait
                     print(f"[{env.now:.0f}min] EV {self.id} lagi ngantri")
+                    driver_waiting_time_tracking[self.waiting_time_tracking_id] += 1
+                    self.total_waiting_time += 1
                     yield env.timeout(1)
                     
             elif self.status == 'battery swap':
                 # Perform the actual battery swap
-                yield env.timeout(2)  # 2 minutes for swap process
+                # yield env.timeout(2)  # 2 minutes for swap process
                 self.battery_swap(env, battery_swap_station, simulation)
             else:
                 yield env.timeout(1)

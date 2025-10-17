@@ -48,38 +48,72 @@ status_data = {
 }
 
 # Jakarta TCI Data - Order generation rates by hour (same as realistic simulation)
-ORDER_LAMBDA_BY_HOUR = {
-    0: 10,   # 23:30-00:30
-    1: 6,    # 00:30-01:30
-    2: 4,    # 01:30-02:30
-    3: 4,    # 02:30-03:30
-    4: 4,    # 03:30-04:30
-    5: 3,    # 04:30-05:30
-    6: 8,    # 05:30-06:30
-    7: 20,   # 06:30-07:30
-    8: 36,   # 07:30-08:30
-    9: 40,   # 08:30-09:30
-    10: 43,  # 09:30-10:30
-    11: 48,  # 10:30-11:30
-    12: 46,  # 11:30-12:30
-    13: 45,  # 12:30-13:30
-    14: 51,  # 13:30-14:30
-    15: 53,  # 14:30-15:30
-    16: 57,  # 15:30-16:30
-    17: 70,  # 16:30-17:30
-    18: 74,  # 17:30-18:30
-    19: 60,  # 18:30-19:30
-    20: 36,  # 19:30-20:30
-    21: 23,  # 20:30-21:30
-    22: 32,  # 21:30-22:30
-    23: 21   # 22:30-23:30
-}
+# ORDER_LAMBDA_BY_HOUR = {
+#     0: 10,   # 23:30-00:30
+#     1: 6,    # 00:30-01:30
+#     2: 4,    # 01:30-02:30
+#     3: 4,    # 02:30-03:30
+#     4: 4,    # 03:30-04:30
+#     5: 3,    # 04:30-05:30
+#     6: 8,    # 05:30-06:30
+#     7: 20,   # 06:30-07:30
+#     8: 36,   # 07:30-08:30
+#     9: 40,   # 08:30-09:30
+#     10: 43,  # 09:30-10:30
+#     11: 48,  # 10:30-11:30
+#     12: 46,  # 11:30-12:30
+#     13: 45,  # 12:30-13:30
+#     14: 51,  # 13:30-14:30
+#     15: 53,  # 14:30-15:30
+#     16: 57,  # 15:30-16:30
+#     17: 70,  # 16:30-17:30
+#     18: 74,  # 17:30-18:30
+#     19: 60,  # 18:30-19:30
+#     20: 36,  # 19:30-20:30
+#     21: 23,  # 20:30-21:30
+#     22: 32,  # 21:30-22:30
+#     23: 21   # 22:30-23:30
+# }
+
+# Dua kali
+# ORDER_LAMBDA_BY_HOUR = {
+#     0: 20, 1: 12, 2: 8, 3: 8, 4: 8, 5: 6, 6: 16, 7: 40, 8: 72, 9: 80, 10: 86, 11: 96,
+#     12: 92, 13: 90, 14: 102, 15: 106, 16: 114, 17: 140, 18: 148, 19: 120, 20: 72, 21: 46, 22: 64, 23: 42
+# }
 
 # Setengah order
 # ORDER_LAMBDA_BY_HOUR = {
 #     0: 5, 1: 3, 2: 2, 3: 2, 4: 2, 5: 1.5, 6: 4, 7: 10, 8: 18, 9: 20, 10: 21.5, 11: 24,
 #     12: 23, 13: 22.5, 14: 25.5, 15: 26.5, 16: 28.5, 17: 35, 18: 37, 19: 30, 20: 18, 21: 11.5, 22: 16, 23: 10.5
 # }
+
+# 2
+ORDER_LAMBDA_BY_HOUR = {
+    0: 100,   # 23:30-00:30
+    1: 60,    # 00:30-01:30
+    2: 40,    # 01:30-02:30
+    3: 40,    # 02:30-03:30
+    4: 40,    # 03:30-04:30
+    5: 30,    # 04:30-05:30
+    6: 80,    # 05:30-06:30
+    7: 200,   # 06:30-07:30
+    8: 360,   # 07:30-08:30
+    9: 400,   # 08:30-09:30
+    10: 430,  # 09:30-10:30
+    11: 480,  # 10:30-11:30
+    12: 460,  # 11:30-12:30
+    13: 450,  # 12:30-13:30
+    14: 510,  # 13:30-14:30
+    15: 530,  # 14:30-15:30
+    16: 570,  # 15:30-16:30
+    17: 700,  # 16:30-17:30
+    18: 740,  # 17:30-18:30
+    19: 600,  # 18:30-19:30
+    20: 360,  # 19:30-20:30
+    21: 230,  # 20:30-21:30
+    22: 320,  # 21:30-22:30
+    23: 210   # 22:30-23:30
+}
 
 # Average speeds by hour (km/h)
 SPEED_BY_HOUR = {
@@ -154,6 +188,8 @@ class Simulation:
         self.station_queues = defaultdict(list)
         self.driver_waiting_times = defaultdict(list)
         self.station_waiting_times = defaultdict(list)
+
+        self.driver_waiting_time_tracking = {}
 
         self.waiting_time_tracking = []
         self.total_drivers_waiting_tracking = 0
@@ -729,21 +765,38 @@ class Simulation:
         total_income = sum(ev.daily_income for ev in self.fleet_ev_motorbikes.values())
         avg_operating_profit = total_income / len(self.fleet_ev_motorbikes) if self.fleet_ev_motorbikes else 0
 
-        total_waiting_time = sum(
-            schedule.get('waiting_time', 0)
-            for schedule in self.swap_schedules.values()
-            if schedule.get('status') == 'done'
-        )
+        # total_waiting_time = sum(
+        #     schedule.get('waiting_time', 0)
+        #     for schedule in self.swap_schedules.values()
+        #     if schedule.get('status') == 'done'
+        # )
 
-        total_waiting = sum(
-            1 for schedule in self.swap_schedules.values()
-            if schedule.get('status') == 'done' and schedule.get('waiting_time', 0) > 0
-        )
+        # total_waiting = sum(
+        #     1 for schedule in self.swap_schedules.values()
+        #     if schedule.get('status') == 'done' and schedule.get('waiting_time', 0) > 0
+        # )
+
+        # total_waiting = len(self.driver_waiting_time_tracking)
+
+        # if self.driver_waiting_time_tracking:
+        #     total_waiting_time = sum(self.driver_waiting_time_tracking.values())
+        #     avg_waiting_time = total_waiting_time / len(self.driver_waiting_time_tracking)
+        # else:
+        #     avg_waiting_time = 0
+
+        total_waiting = sum(ev.num_waiting for ev in self.fleet_ev_motorbikes.values())
+
+        total_waiting_time = sum(ev.total_waiting_time for ev in self.fleet_ev_motorbikes.values())
+
+        avg_waiting_time = total_waiting_time / len(self.fleet_ev_motorbikes)
             
-        if total_waiting:
-            avg_waiting_time = total_waiting_time / total_waiting
-        else:
-            avg_waiting_time = 0
+        # if total_waiting:
+        #     avg_waiting_time = total_waiting_time / total_waiting
+        # else:
+        #     avg_waiting_time = 0
+
+        print("Banyak driver: ", len(self.fleet_ev_motorbikes))
+        print("Banyak stasiun: ", len(self.battery_swap_station))
         
         print(f"\nFinal Metrics Calculation:")
         print(f"  Total drivers who waited: {total_waiting}")
@@ -770,7 +823,7 @@ class Simulation:
 
         # Start EV processes
         for ev in self.fleet_ev_motorbikes.values():
-            self.env.process(ev.drive(self.env, self.battery_swap_station, self.swap_schedules, self.order_system, self.start_time, self))
+            self.env.process(ev.drive(self.env, self.driver_waiting_time_tracking, self.battery_swap_station, self.swap_schedules, self.order_system, self.start_time, self))
 
         # Start battery charging processes
         for station in self.battery_swap_station.values():
@@ -944,15 +997,15 @@ if __name__ == '__main__':
     print(f"\nRunning 3 simulations with {num_drivers} drivers and {num_stations} stations...")
     
     # Run simulations
-    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3)
+    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=1)
     
     # Generate analysis
     generate_analysis_graphs(results)
     generate_station_waiting_histogram(results[0], 0)  # Ambil distribusi stasiun dari simulasi pertama
     generate_driver_waiting_histogram(results[0], 0)   # Ambil distribusi driver dari simulasi pertama
-    generate_station_waiting_histogram(results[1], 1)  # Ambil distribusi stasiun dari simulasi pertama
-    generate_driver_waiting_histogram(results[1], 1)   # Ambil distribusi driver dari simulasi pertama
-    generate_station_waiting_histogram(results[2], 2)  # Ambil distribusi stasiun dari simulasi pertama
-    generate_driver_waiting_histogram(results[2], 2)   # Ambil distribusi driver dari simulasi pertama
+    # generate_station_waiting_histogram(results[1], 1)  # Ambil distribusi stasiun dari simulasi pertama
+    # generate_driver_waiting_histogram(results[1], 1)   # Ambil distribusi driver dari simulasi pertama
+    # generate_station_waiting_histogram(results[2], 2)  # Ambil distribusi stasiun dari simulasi pertama
+    # generate_driver_waiting_histogram(results[2], 2)   # Ambil distribusi driver dari simulasi pertama
     
     print(f"\nAll simulations completed successfully!")
