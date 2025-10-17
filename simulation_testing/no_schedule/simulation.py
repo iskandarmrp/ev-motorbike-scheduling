@@ -23,10 +23,10 @@ from simulation_utils import snap_to_road, get_distance_and_duration, get_distan
 OSRM_URL = "http://localhost:5000"
 
 # Jakarta TCI Data - Order generation rates by hour
-ORDER_LAMBDA_BY_HOUR = {
-    0: 10, 1: 6, 2: 4, 3: 4, 4: 4, 5: 3, 6: 8, 7: 20, 8: 36, 9: 40, 10: 43, 11: 48,
-    12: 46, 13: 45, 14: 51, 15: 53, 16: 57, 17: 70, 18: 74, 19: 60, 20: 36, 21: 23, 22: 32, 23: 21
-}
+# ORDER_LAMBDA_BY_HOUR = {
+#     0: 10, 1: 6, 2: 4, 3: 4, 4: 4, 5: 3, 6: 8, 7: 20, 8: 36, 9: 40, 10: 43, 11: 48,
+#     12: 46, 13: 45, 14: 51, 15: 53, 16: 57, 17: 70, 18: 74, 19: 60, 20: 36, 21: 23, 22: 32, 23: 21
+# }
 
 # dua kali
 # ORDER_LAMBDA_BY_HOUR = {
@@ -40,32 +40,32 @@ ORDER_LAMBDA_BY_HOUR = {
 #     12: 23, 13: 22.5, 14: 25.5, 15: 26.5, 16: 28.5, 17: 35, 18: 37, 19: 30, 20: 18, 21: 11.5, 22: 16, 23: 10.5
 # }
 
-# ORDER_LAMBDA_BY_HOUR = {
-#     0: 100,   # 23:30-00:30
-#     1: 60,    # 00:30-01:30
-#     2: 40,    # 01:30-02:30
-#     3: 40,    # 02:30-03:30
-#     4: 40,    # 03:30-04:30
-#     5: 30,    # 04:30-05:30
-#     6: 80,    # 05:30-06:30
-#     7: 200,   # 06:30-07:30
-#     8: 360,   # 07:30-08:30
-#     9: 400,   # 08:30-09:30
-#     10: 430,  # 09:30-10:30
-#     11: 480,  # 10:30-11:30
-#     12: 460,  # 11:30-12:30
-#     13: 450,  # 12:30-13:30
-#     14: 510,  # 13:30-14:30
-#     15: 530,  # 14:30-15:30
-#     16: 570,  # 15:30-16:30
-#     17: 700,  # 16:30-17:30
-#     18: 740,  # 17:30-18:30
-#     19: 600,  # 18:30-19:30
-#     20: 360,  # 19:30-20:30
-#     21: 230,  # 20:30-21:30
-#     22: 320,  # 21:30-22:30
-#     23: 210   # 22:30-23:30
-# }
+ORDER_LAMBDA_BY_HOUR = {
+    0: 100,   # 23:30-00:30
+    1: 60,    # 00:30-01:30
+    2: 40,    # 01:30-02:30
+    3: 40,    # 02:30-03:30
+    4: 40,    # 03:30-04:30
+    5: 30,    # 04:30-05:30
+    6: 80,    # 05:30-06:30
+    7: 200,   # 06:30-07:30
+    8: 360,   # 07:30-08:30
+    9: 400,   # 08:30-09:30
+    10: 430,  # 09:30-10:30
+    11: 480,  # 10:30-11:30
+    12: 460,  # 11:30-12:30
+    13: 450,  # 12:30-13:30
+    14: 510,  # 13:30-14:30
+    15: 530,  # 14:30-15:30
+    16: 570,  # 15:30-16:30
+    17: 700,  # 16:30-17:30
+    18: 740,  # 17:30-18:30
+    19: 600,  # 18:30-19:30
+    20: 360,  # 19:30-20:30
+    21: 230,  # 20:30-21:30
+    22: 320,  # 21:30-22:30
+    23: 210   # 22:30-23:30
+}
 
 # Central Jakarta / South Jakarta hotspots (60% of orders)
 CENTRAL_SOUTH_JAKARTA_BOUNDS = {
@@ -106,6 +106,8 @@ class Simulation:
 
         self.waiting_time_tracking = []
         self.total_drivers_waiting_tracking = 0
+
+        self.driver_waiting_time_tracking = {}
         
         # Station queue
         self.station_ev_queues = defaultdict(list)
@@ -466,7 +468,7 @@ class Simulation:
 
         # Start EV processes
         for ev in self.fleet_ev_motorbikes.values():
-            self.env.process(ev.drive(self.env, self.battery_swap_station, self.order_system, self.start_time, self))
+            self.env.process(ev.drive(self.env, self.driver_waiting_time_tracking, self.battery_swap_station, self.order_system, self.start_time, self))
 
         # Start battery charging processes
         for station in self.battery_swap_station.values():
@@ -497,18 +499,40 @@ class Simulation:
         avg_operating_profit = total_income / len(self.fleet_ev_motorbikes) if self.fleet_ev_motorbikes else 0
 
         # Number of drivers who waited at swap stations
-        num_drivers_waiting = len(self.waiting_time_tracking)
+        # num_drivers_waiting = len(self.waiting_time_tracking)
+
+        # num_drivers_waiting = len(self.driver_waiting_time_tracking)
+
+        num_drivers_waiting = sum(ev.num_waiting for ev in self.fleet_ev_motorbikes.values())
         
         # Average waiting time of drivers at swap stations
-        if self.waiting_time_tracking:
-            total_waiting_time = sum(self.waiting_time_tracking)
-            avg_waiting_time = total_waiting_time / len(self.waiting_time_tracking)
-        else:
-            avg_waiting_time = 0
+        # if self.waiting_time_tracking:
+        #     total_waiting_time = sum(self.waiting_time_tracking)
+        #     avg_waiting_time = total_waiting_time / len(self.waiting_time_tracking)
+        # else:
+        #     avg_waiting_time = 0
+
+        # if self.driver_waiting_time_tracking:
+        #     total_waiting_time = sum(self.driver_waiting_time_tracking.values())
+        #     avg_waiting_time = total_waiting_time / len(self.driver_waiting_time_tracking)
+        # else:
+        #     avg_waiting_time = 0
+
+        total_waiting_time = sum(ev.total_waiting_time for ev in self.fleet_ev_motorbikes.values())
+
+        avg_waiting_time = total_waiting_time / len(self.fleet_ev_motorbikes)
         
+        # print(f"\nFinal Metrics Calculation:")
+        # print(f"  Total drivers who waited: {num_drivers_waiting}")
+        # print(f"  Total waiting time: {sum(self.waiting_time_tracking) if self.waiting_time_tracking else 0:.1f} minutes")
+        # print(f"  Average waiting time: {avg_waiting_time:.1f} minutes")
+
+        print("Banyak driver: ", len(self.fleet_ev_motorbikes))
+        print("Banyak stasiun: ", len(self.battery_swap_station))
+
         print(f"\nFinal Metrics Calculation:")
         print(f"  Total drivers who waited: {num_drivers_waiting}")
-        print(f"  Total waiting time: {sum(self.waiting_time_tracking) if self.waiting_time_tracking else 0:.1f} minutes")
+        print(f"  Total waiting time: {sum(self.driver_waiting_time_tracking.values()) if self.driver_waiting_time_tracking else 0:.1f} minutes")
         print(f"  Average waiting time: {avg_waiting_time:.1f} minutes")
         
         return {
@@ -519,7 +543,7 @@ class Simulation:
             'driver_waiting_times': dict(self.driver_waiting_times),
         }
 
-def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3):
+def run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=1):
     results = []
     
     for run in range(num_runs):
@@ -659,7 +683,7 @@ if __name__ == '__main__':
     print(f"\nRunning 3 simulations with {num_drivers} drivers and {num_stations} stations...")
     
     # Run simulations
-    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=3)
+    results = run_multiple_simulations(num_drivers, num_stations, csv_path, num_runs=1)
     
     # Generate analysis
     generate_analysis_graphs(results)

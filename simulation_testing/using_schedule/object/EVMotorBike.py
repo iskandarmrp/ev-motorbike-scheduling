@@ -119,13 +119,17 @@ class EVMotorBike:
         self.daily_income = 0
         self.extra_waiting_time = 0
 
+        self.waiting_time_tracking_id = None
+        self.total_waiting_time = 0
+        self.num_waiting = 0
+
         self.battery.id = copy.deepcopy(battery_counter[0])
         self.battery.location = 'motor'
         self.battery.location_id = copy.deepcopy(self.id)
         battery_registry[battery_counter[0]] = self.battery
         battery_counter[0] += 1
 
-    def drive(self, env, battery_swap_station, swap_schedules, order_system, start_time, simulation):
+    def drive(self, env, driver_waiting_time_tracking, battery_swap_station, swap_schedules, order_system, start_time, simulation):
         while True:
             if self.online_status == 'online':
                 if self.status == 'idle':
@@ -329,7 +333,7 @@ class EVMotorBike:
                                 self.swap_schedule["energy_distance"] = max(0, self.swap_schedule["energy_distance"] - energy_per_minute)
                                 self.swap_schedule["travel_time"] = max(0, self.swap_schedule["travel_time"] - 1)
                 elif self.status == 'battery swap':
-                    yield env.timeout(max(0, self.swap_schedule.get("waiting_time", 0)))
+                    # yield env.timeout(max(0, self.swap_schedule.get("waiting_time", 0)))
 
                     battery_station_id = self.swap_schedule["battery_station"]
                     slot_index = self.swap_schedule["slot"]
@@ -339,6 +343,15 @@ class EVMotorBike:
                     print("panjang slot", len(station.slots))
                     self.extra_waiting_time = 0
                     while station.slots[slot_index].battery_now < 80:
+                        if self.waiting_time_tracking_id is None:
+                            self.waiting_time_tracking_id = len(driver_waiting_time_tracking)
+                            driver_waiting_time_tracking[self.waiting_time_tracking_id] = 1
+                            self.total_waiting_time += 1
+                            self.num_waiting += 1
+                        else:
+                            driver_waiting_time_tracking[self.waiting_time_tracking_id] += 1
+                            self.total_waiting_time += 1
+
                         self.extra_waiting_time += 1
                         yield env.timeout(1)
 
@@ -357,6 +370,8 @@ class EVMotorBike:
                 yield env.timeout(1)
 
     def battery_swap(self, env, battery_swap_station, swap_schedules):
+        self.waiting_time_tracking_id = None
+
         # cek ada swap schedule ga
         station_id = self.swap_schedule["battery_station"]
         slot_index = self.swap_schedule["slot"]
